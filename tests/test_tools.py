@@ -379,6 +379,56 @@ def test_assess_damaged_goods_quantifies_loss():
         assert line["usable_quantity"] == line["shipped_quantity"] - line["damaged_quantity"]
 
 
+def test_severity_accounts_for_downstream_order_exposure():
+    result = call(
+        incident_tools.classify_incident_severity,
+        incident_type="shipment_delay",
+        shipment_id="SHP-2026-0002",
+    )
+    impact = result["order_impact"]
+    assert impact["at_risk_count"] >= 1
+    assert impact["at_risk_retail_value_usd"] > 0
+    assert impact["stores_affected"]
+
+
+def test_severity_reports_no_order_impact_when_no_shipment_is_given():
+    result = call(
+        incident_tools.classify_incident_severity,
+        incident_type="inventory_shortage",
+        sku="SKU-1001",
+        warehouse_id="WH-N04",
+    )
+    assert result["order_impact"] is None
+
+
+def test_find_related_incidents_flags_a_duplicate():
+    # INC-2026-0001 is seeded against SHP-2026-0002.
+    result = call(incident_tools.find_related_incidents, shipment_id="SHP-2026-0002")
+    assert result["duplicate_of"] == "INC-2026-0001"
+    assert result["open_match_count"] >= 1
+    assert "update it instead" in result["recommendation"]
+
+
+def test_find_related_incidents_matches_on_supplier_and_sku():
+    by_supplier = call(incident_tools.find_related_incidents, supplier_id="SUP-005")
+    assert "INC-2026-0001" in [m["incident_id"] for m in by_supplier["matches"]]
+
+    by_sku = call(incident_tools.find_related_incidents, sku="SKU-3001")
+    assert "INC-2026-0001" in [m["incident_id"] for m in by_sku["matches"]]
+
+
+def test_find_related_incidents_reports_nothing_for_an_unrelated_shipment():
+    result = call(incident_tools.find_related_incidents, shipment_id="SHP-2026-0003")
+    assert result["match_count"] == 0
+    assert result["duplicate_of"] is None
+    assert "new incident" in result["recommendation"]
+
+
+def test_find_related_incidents_requires_at_least_one_filter():
+    result = call(incident_tools.find_related_incidents)
+    assert "error" in result
+
+
 def test_check_incident_status_reads_the_register():
     result = call(incident_tools.check_incident_status, incident_id="INC-2026-0001")
     assert result["severity"] == "high"

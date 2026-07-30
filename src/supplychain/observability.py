@@ -15,6 +15,7 @@ import os
 from typing import Any
 
 from .config import get_settings
+from .prompts import prompt_versions
 
 
 def configure_tracing() -> bool:
@@ -88,6 +89,12 @@ def run_config(
             "reasoning_effort": settings.reasoning_effort,
             "router_reasoning_effort": settings.router_reasoning_effort,
             "data_source": "rest_api" if settings.uses_rest_api else "json_fixtures",
+            # Prompt versions, so a trace can be attributed to the prompt that
+            # produced it and two versions can be compared in LangSmith.
+            **{
+                f"prompt_{name}": version
+                for name, version in prompt_versions().items()
+            },
             **(metadata or {}),
         },
     }

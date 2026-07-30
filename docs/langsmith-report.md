@@ -109,6 +109,40 @@ working as designed: intake fell back to regex extraction and the supervisor to
 the fixed routing table, so the graph still routed correctly and the hard error
 only surfaced at the worker.
 
+## 4b. Findings already observed (first live run, 2026-07-30)
+
+Two cases run live on `gemini-3.1-flash-lite`, reasoning effort `medium`, tracing
+on. Four turns, all completed, no errors.
+
+| Case | Turns | Route | Latency |
+|---|---|---|---|
+| `track_shipment` | 1 | shipment → incident_analysis → inventory → recovery | 50.7s, 5 hops |
+| `multi_turn_memory` | 3 | shipment / shipment / supplier | 10.7s, 61.1s, 14.5s |
+
+Median 32.6s, mean 34.2s, max 61.1s.
+
+**Finding 1 - the supervisor over-routes simple lookups (open, owner TM4).**
+"What's the status of shipment SHP-2026-0002?" is a `status_query`, and the
+supervisor prompt says a simple status lookup should go straight to the
+specialist and then to `respond`. Instead it visited four agents over five hops,
+took 50.7s, and volunteered an unrequested inventory-transfer proposal — so a
+read-only question ended at an approval gate. The deterministic fallback table
+routes this correctly (`status_query → shipment`), so the defect is in the LLM
+routing decision, not the policy. Candidate fixes: state the stop condition
+earlier and more forcefully in `SUPERVISOR_PROMPT`, or make `status_query` skip
+the LLM router entirely and use the deterministic table.
+
+**Finding 2 - latency is dominated by hop count.** The same question answered in
+one hop took 10.7s; in five hops, 50.7s. Roughly 10s per supervisor+agent hop at
+`medium` effort. Fixing Finding 1 should cut typical status-query latency by
+~4x, which is a bigger win than any model or effort change.
+
+**Finding 3 - conversation memory works as intended (closed).** In
+`multi_turn_memory`, turn 2's "that shipment" resolved to SHP-2026-0002 and turn
+3's "the same SKUs" resolved to SKU-3001/SKU-3002, with no identifier repeated
+by the user. Entity memory is populated deterministically in intake, so this
+holds even when the structured-output call fails.
+
 ## 5. Prompt improvement from trace insights
 
 **Prompt changed:** `SHIPMENT_PROMPT` (`src/supplychain/prompts.py`)

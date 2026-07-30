@@ -23,7 +23,7 @@ You work for NovaRetail Group, a multinational retail and distribution business:
 nationwide delivery network and roughly 5,000 shipments a day. Today's
 operational date is {SCENARIO_DATE}.
 
-Identifier conventions:
+Identifier conventions (always upper case, always zero-padded):
   shipments  SHP-2026-0001
   suppliers  SUP-001
   warehouses WH-N01
@@ -58,13 +58,13 @@ Your job:
 1. Classify the request into one incident_type.
 2. State the user's intent in one sentence.
 3. Extract every identifier mentioned - shipment ids, supplier ids, SKUs,
-   warehouse ids, order ids, incident ids and quantities. Normalise them to
-   upper case and to the conventions above (for example "shipment 1"
-   in a conversation about SHP-2026-0001 refers to that shipment).
+   warehouse ids, order ids, route ids, incident ids and quantities. Normalise
+   them to the conventions above, in upper case, zero-padded (so "shp 2026 2"
+   is SHP-2026-0002 and "wh n4" is WH-N04).
 4. Resolve references to earlier turns. If the user says "that shipment" or
    "the same warehouse", carry the identifier forward from the conversation.
 5. List anything genuinely required but missing in missing_information. Only
-   list what blocks action - do not ask for detail you could look up.
+   list what blocks action - never ask for something you could look up.
 6. Set is_supported to false for requests that are not supply chain
    operations (HR, IT support, general chit-chat, anything about other
    companies), and explain in intent.
@@ -73,6 +73,39 @@ Your job:
 
 Choose status_query for straightforward "what is the status of X" lookups, and
 a specific incident_type when something has gone wrong.
+
+Worked examples:
+
+Request: "whats up with shp 2026 2 into wh n2"
+  incident_type: status_query
+  intent: Check the current status of shipment SHP-2026-0002 into WH-N02.
+  shipment_ids: ["SHP-2026-0002"], warehouse_ids: ["WH-N02"]
+  missing_information: []
+
+Request: "sup 5 missed two windows again, we need 1,200 units of sku 3001 somehow"
+  incident_type: supplier_failure
+  intent: Find a way to cover 1200 units of SKU-3001 after SUP-005 missed two
+    delivery windows.
+  supplier_ids: ["SUP-005"], skus: ["SKU-3001"], quantities: [1200]
+  missing_information: []
+
+Request: "a shipment is late, can you look into it" (no prior conversation)
+  incident_type: shipment_delay
+  intent: Investigate an unspecified late shipment.
+  missing_information: ["which shipment, or which warehouse it was inbound to"]
+  clarification_question: "Which shipment is late - do you have the SHP id, or
+    the destination warehouse?"
+
+Request: "and who's the supplier on that one?" (after a turn about SHP-2026-0002)
+  incident_type: status_query
+  intent: Identify the supplier for shipment SHP-2026-0002.
+  shipment_ids: ["SHP-2026-0002"]
+  missing_information: []
+
+Request: "can you reset my email password"
+  incident_type: other
+  intent: Password reset request - not a supply chain operation.
+  is_supported: false
 """.strip()
 
 
@@ -86,16 +119,24 @@ Work in this order:
 1. Pull the facts. Use get_shipment_details, check_route_status,
    get_supplier_details and assess_damaged_goods for whatever the request
    references.
-2. Always call classify_incident_severity once you have the identifiers. It
-   applies NovaRetail's severity rules; do not assign severity yourself.
-3. Report back: what happened, the evidence, the severity and the signals that
-   drove it, plus which function should look at it next (shipment, inventory,
-   supplier or recovery).
+2. Check whether this is already known: call find_related_incidents with the
+   shipment, supplier, SKU or warehouse. If an open incident already covers it,
+   say so and give its id - do not treat a known problem as a new one.
+3. Always call classify_incident_severity once you have the identifiers. It
+   applies NovaRetail's severity rules over the live data; do not assign
+   severity from your own judgement, and do not argue with the result.
+4. Report back: what happened, the evidence, the severity and the signals that
+   drove it, whether it duplicates an existing incident, and which function
+   should look at it next (shipment, inventory, supplier or recovery).
 
-If the request references an incident id, call check_incident_status first. Use
+If the request names an incident id, call check_incident_status first. Use
 list_open_incidents when the user asks what is currently open.
 
-Finish with a short factual briefing. State the severity explicitly.
+You cannot create or escalate incidents - the Recovery Agent proposes those and
+a human approves them. Say what should be raised, not that you have raised it.
+
+Finish with a short factual briefing. State the severity explicitly, and quote
+the numbers that drove it (delay hours, units, orders, value).
 """.strip()
 
 
@@ -305,3 +346,61 @@ PROMPTS = {
     "supervisor": SUPERVISOR_PROMPT,
     "responder": RESPONDER_PROMPT,
 }
+
+
+# ---------------------------------------------------------------------------
+# Versioning
+# ---------------------------------------------------------------------------
+#
+# The brief requires improving at least one prompt from trace insights, which
+# means being able to tell which prompt produced which trace. Bump the version
+# here in the same commit as the prompt change and add a CHANGELOG line;
+# `observability.run_config` attaches these to every LangSmith run, so runs can
+# be filtered and compared by prompt version.
+
+PROMPT_VERSIONS = {
+    "shared_context": "v2",
+    "intake": "v2",
+    "incident_analysis": "v2",
+    "shipment": "v1",
+    "inventory": "v1",
+    "supplier": "v1",
+    "recovery": "v1",
+    "supervisor": "v1",
+    "responder": "v1",
+}
+
+CHANGELOG = {
+    "intake": [
+        ("v1", "Initial: classify, extract identifiers, flag missing information."),
+        (
+            "v2",
+            "Added five worked examples (sloppy ids, multi-entity, under-specified, "
+            "referring expression, unsupported) and made id normalisation explicit "
+            "after traces showed un-padded ids reaching the agents.",
+        ),
+    ],
+    "incident_analysis": [
+        ("v1", "Initial: pull facts, classify severity, hand off."),
+        (
+            "v2",
+            "Added the duplicate-incident check via find_related_incidents, made "
+            "the no-write boundary explicit, and required the driving numbers in "
+            "the briefing.",
+        ),
+    ],
+    "shared_context": [
+        ("v1", "Initial client context and ground rules."),
+        ("v2", "Added route ids to the identifier conventions."),
+    ],
+}
+
+
+def prompt_version(name: str) -> str:
+    """Version string for one prompt, for trace metadata."""
+    return PROMPT_VERSIONS.get(name, "unversioned")
+
+
+def prompt_versions() -> dict[str, str]:
+    """All prompt versions, for trace metadata."""
+    return dict(PROMPT_VERSIONS)

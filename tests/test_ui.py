@@ -58,7 +58,7 @@ def test_sidebar_reports_the_data_layer(no_api_key):
 def test_every_sample_prompt_has_a_button(no_api_key):
     app = fresh_app()
     labels = {button.label for button in app.button}
-    assert "New conversation" in labels
+    assert any("New conversation" in label for label in labels)
     assert len(labels) >= 7  # six samples plus New conversation
 
 
@@ -73,17 +73,24 @@ def test_chat_turn_without_a_key_answers_instead_of_crashing(no_api_key):
     assert "GOOGLE_API_KEY" in app.session_state["history"][1]["content"]
 
 
-def test_new_conversation_clears_history(no_api_key):
+def test_new_conversation_starts_a_fresh_thread(no_api_key):
     app = fresh_app()
     app.chat_input[0].set_value("Which shipments are delayed?").run()
     assert app.session_state["history"]
 
     thread_before = app.session_state["thread_id"]
-    next(b for b in app.button if b.label == "New conversation").click().run()
+    next(b for b in app.button if "New conversation" in b.label).click().run()
 
     assert app.session_state["history"] == []
     assert app.session_state["thread_id"] != thread_before
     assert not app.exception
+
+
+def test_sidebar_reports_the_memory_backend(no_api_key):
+    app = fresh_app()
+    captions = " ".join(caption.value for caption in app.caption)
+    assert "Memory:" in captions
+    assert "in-process only" in captions  # conftest pins the memory back end
 
 
 def test_sample_prompt_button_starts_a_turn(no_api_key):

@@ -46,10 +46,14 @@ def intake_node(state: SupplyChainState) -> dict[str, Any]:
     # intake agent uses to resolve references like "that shipment".
     prior = list(state.get("messages", []))[:-1]
 
-    result, from_llm = analyse_request(user_request, prior)
+    outcome = analyse_request(
+        user_request, prior, state.get("conversation_entities") or {}
+    )
 
     return {
-        "request": {**result.model_dump(), "extracted_by": "llm" if from_llm else "regex"},
+        "request": outcome.as_request(),
+        # Entity memory persists across turns - deliberately not reset below.
+        "conversation_entities": outcome.entities,
         # Per-turn reset: these are plain fields, not accumulating reducers, so
         # a second question is not answered with the first one's findings.
         "hops": 0,

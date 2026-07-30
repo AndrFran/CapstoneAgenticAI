@@ -1,7 +1,9 @@
 """Pytest configuration.
 
 Adds ``src`` to the path so the tests run against the source tree without an
-install step, and keeps the runtime write store out of the committed fixtures.
+install step, keeps the runtime write store out of the committed fixtures, and
+pins conversation memory to the in-process back end so no test writes to the
+developer's SQLite history file.
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ SRC = Path(__file__).resolve().parents[1] / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from supplychain import config, llm  # noqa: E402
+from supplychain import config, llm, memory, runner  # noqa: E402
 from supplychain.data import access  # noqa: E402
 
 # Credentials that would let an agent make a live model call. A developer's
@@ -48,3 +50,16 @@ def clean_runtime_store():
     access.reset_runtime_store()
     yield
     access.reset_runtime_store()
+
+
+@pytest.fixture(autouse=True)
+def in_process_memory(monkeypatch):
+    """Never touch the real conversation history during tests."""
+    monkeypatch.setenv("SUPPLYCHAIN_MEMORY_BACKEND", "memory")
+    config.reload_settings()
+    memory.reset()
+    runner.reset_graph()
+    yield
+    memory.reset()
+    runner.reset_graph()
+    config.reload_settings()
