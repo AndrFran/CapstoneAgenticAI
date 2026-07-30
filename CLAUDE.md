@@ -29,6 +29,7 @@ python scripts/smoke_test.py             # data + all 33 tools + graph compile, 
 python scripts/generate_mock_data.py     # regenerate the committed JSON fixtures
 python scripts/run_eval_conversations.py # 12 traced conversations + latency stats (needs keys)
 python scripts/run_eval_conversations.py --case delay_impact   # one case
+python scripts/run_eval_conversations.py --pace 20             # free tier: 15 req/min
 
 streamlit run streamlit_app.py
 ```

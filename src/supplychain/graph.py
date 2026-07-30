@@ -84,14 +84,51 @@ def supervisor_node(state: SupplyChainState) -> dict[str, Any]:
         }
 
     decision, from_llm = decide_route(dict(state))
+    target, override = _constrain_read_only(state, decision.next_agent)
     return {
         "hops": hops,
-        "next_agent": decision.next_agent,
+        "next_agent": target,
         "route_reason": (
-            decision.reason if from_llm else f"{decision.reason} (fallback policy)"
+            override
+            or (decision.reason if from_llm else f"{decision.reason} (fallback policy)")
         ),
-        "route_task": decision.task,
+        "route_task": (
+            "Summarise what was found and answer the question."
+            if override
+            else decision.task
+        ),
     }
+
+
+# A status lookup is read-only. Traces showed the router sending one through
+# four agents and into a recovery proposal - so the answer to "what's the status
+# of SHP-2026-0002?" arrived at an approval gate. Two structural limits, because
+# a routing instruction in a prompt is a suggestion and an edge is not.
+STATUS_QUERY_WORKER_BUDGET = 2
+
+
+def _constrain_read_only(
+    state: SupplyChainState, target: str
+) -> tuple[str, str | None]:
+    """Clamp routing for read-only requests. Returns (target, override reason)."""
+    request = state.get("request") or {}
+    if request.get("incident_type") != "status_query":
+        return target, None
+
+    if target == "recovery":
+        return "respond", (
+            "Status lookups are read-only; recovery planning is not needed to "
+            "answer one."
+        )
+
+    visited = state.get("visited") or []
+    if target != "respond" and len(visited) >= STATUS_QUERY_WORKER_BUDGET:
+        return "respond", (
+            f"Status lookup already answered by {', '.join(visited)}; "
+            "stopping rather than gathering more."
+        )
+
+    return target, None
 
 
 def _worker_node(name: str):

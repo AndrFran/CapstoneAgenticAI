@@ -292,8 +292,11 @@ Available agents:
 - respond - all necessary work is done; generate the final answer
 
 Routing policy:
-- A simple status lookup goes straight to the specialist agent
-  (shipment / inventory / supplier), then to respond.
+- A simple status lookup goes to ONE specialist agent
+  (shipment / inventory / supplier) and then straight to respond. Do not add
+  incident analysis, inventory checks or recovery planning to a question that
+  only asked where something is. "What is the status of SHP-2026-0002?" is
+  shipment, then respond - two hops, nothing more.
 - A disruption goes to incident_analysis first, then to the agents whose data
   is needed, then to recovery, then to respond.
 - Route to inventory before supplier when a shortage might be covered by a
@@ -301,7 +304,9 @@ Routing policy:
 - Route to recovery once you have enough facts to choose between options, and
   before responding to anything the user needs a decision on.
 - Route to respond as soon as the question is answered. Do not collect data
-  the user did not ask for.
+  the user did not ask for. Answering more than was asked is a failure, not
+  thoroughness: it costs the operator time and can end at an approval gate
+  they never wanted.
 - Never route to the same agent twice unless new information has arrived that
   it has not seen.
 - If the request is not supported, or is missing information nobody can look
@@ -366,7 +371,7 @@ PROMPT_VERSIONS = {
     "inventory": "v1",
     "supplier": "v1",
     "recovery": "v1",
-    "supervisor": "v1",
+    "supervisor": "v2",
     "responder": "v1",
 }
 
@@ -392,6 +397,17 @@ CHANGELOG = {
     "shared_context": [
         ("v1", "Initial client context and ground rules."),
         ("v2", "Added route ids to the identifier conventions."),
+    ],
+    "supervisor": [
+        ("v1", "Initial routing policy."),
+        (
+            "v2",
+            "Traces showed a status lookup routed through four agents (5 hops, "
+            "50.7s) and into an unrequested recovery proposal. Made the stop "
+            "condition explicit and named over-collection as a failure. Paired "
+            "with a structural clamp in graph._constrain_read_only, because a "
+            "routing rule in a prompt is a suggestion.",
+        ),
     ],
     "shipment": [
         ("v1", "Initial: tracking, delay, affected orders, route checks."),

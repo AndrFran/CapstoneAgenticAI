@@ -260,6 +260,15 @@ Runs 12 conversations (14 turns) covering every functional requirement plus the
 unsupported-request and missing-information cases, each on its own thread and
 tagged `eval`. Prints latency statistics and writes `docs/eval_runs.json`.
 
+On a **free-tier** Gemini key (15 requests/minute) a full run will hit the
+quota — one multi-agent turn is several requests. The harness retries quota
+errors automatically; add `--pace 20` to space turns out and let the whole set
+through:
+
+```bash
+python scripts/run_eval_conversations.py --pace 20
+```
+
 Filter in LangSmith with `tag:eval`. Write-up template:
 [`docs/langsmith-report.md`](docs/langsmith-report.md).
 

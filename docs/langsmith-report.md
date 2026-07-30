@@ -143,6 +143,53 @@ one hop took 10.7s; in five hops, 50.7s. Roughly 10s per supervisor+agent hop at
 by the user. Entity memory is populated deterministically in intake, so this
 holds even when the structured-output call fails.
 
+## 4c. Finding 1 resolved — supervisor over-routing (2026-07-30)
+
+Fixed and re-measured on the same case, same model and settings.
+
+| | Before | After |
+|---|---|---|
+| Route for "What's the status of SHP-2026-0002?" | shipment → incident_analysis → inventory → recovery | **shipment** |
+| Supervisor hops | 5 | **2** |
+| Latency | 50.7s | **11.1s** |
+| Ended at an approval gate | yes (unrequested transfer proposal) | **no** |
+
+Two changes, because a routing rule written only in a prompt is a suggestion:
+
+1. `SUPERVISOR_PROMPT` v1 → v2: the stop condition is now explicit, with the
+   status-lookup case spelled out, and over-collection is named as a failure
+   rather than thoroughness.
+2. `graph._constrain_read_only`: a structural clamp. A `status_query` never
+   routes to `recovery`, and stops after `STATUS_QUERY_WORKER_BUDGET` (2)
+   specialist agents. Two is deliberate — "status of X, and do we have stock?"
+   legitimately needs two — and the clamp applies to nothing but status
+   queries.
+
+Regression check: `delay_impact` still routes incident_analysis → recovery in
+5.6s, so disruptions are unaffected. Six tests in `tests/test_graph.py` pin the
+clamp's boundaries, including that non-status requests still reach recovery.
+
+**Finding 2 (latency tracks hop count) is confirmed by the same numbers**: 3
+fewer hops removed 39.6s, ~13s per hop.
+
+## 4d. Free-tier rate limits
+
+The Gemini free tier allows **15 requests per minute** for
+`gemini-3.1-flash-lite`, and one multi-agent turn is several requests. A full
+12-conversation run will hit `429 RESOURCE_EXHAUSTED` partway through — it did
+here, on the second case.
+
+`scripts/run_eval_conversations.py` now retries quota errors, honouring the
+server's suggested retry delay and backing off exponentially (4 attempts), and
+takes `--pace SECONDS` to space turns out:
+
+```bash
+python scripts/run_eval_conversations.py --pace 20
+```
+
+Budget roughly 20 minutes for the full set on a free-tier key. A paid key or a
+Vertex AI project needs neither flag.
+
 ## 5. Prompt improvement from trace insights
 
 **Prompt changed:** `SHIPMENT_PROMPT` (`src/supplychain/prompts.py`)
