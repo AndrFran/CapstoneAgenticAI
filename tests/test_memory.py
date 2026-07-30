@@ -79,6 +79,30 @@ def test_record_turn_increments_and_stores_severity(store):
 def test_record_turn_on_an_unknown_thread_is_a_no_op(store):
     store.record_turn("missing")
     assert store.get("missing") is None
+    assert store.turn_meta("missing") == []
+
+
+def test_turn_metadata_is_kept_in_order(store):
+    store.upsert("t1", title="Delay")
+    store.record_turn("t1", severity="high", meta={"route": ["shipment"], "hops": 2})
+    store.record_turn("t1", meta={"route": ["supplier"], "hops": 3})
+
+    metas = store.turn_meta("t1")
+    assert [m["route"] for m in metas] == [["shipment"], ["supplier"]]
+    assert metas[0]["hops"] == 2
+
+
+def test_turn_metadata_survives_a_missing_meta(store):
+    store.upsert("t1", title="Delay")
+    store.record_turn("t1")
+    assert store.turn_meta("t1") == [{}]
+
+
+def test_deleting_a_conversation_drops_its_turn_metadata(store):
+    store.upsert("t1", title="Doomed")
+    store.record_turn("t1", meta={"route": ["shipment"]})
+    store.delete("t1")
+    assert store.turn_meta("t1") == []
 
 
 def test_rename(store):
@@ -126,12 +150,17 @@ def test_sqlite_store_survives_a_reconnect(tmp_path):
     path = str(tmp_path / "conversations.sqlite")
 
     first = sqlite3.connect(path, check_same_thread=False)
-    memory.SqliteConversationStore(first).upsert("t1", title="Persisted")
+    store = memory.SqliteConversationStore(first)
+    store.upsert("t1", title="Persisted")
+    store.record_turn("t1", severity="high", meta={"route": ["shipment"], "hops": 2})
     first.close()
 
     second = sqlite3.connect(path, check_same_thread=False)
     reopened = memory.SqliteConversationStore(second)
     assert reopened.get("t1").title == "Persisted"
+    # Trace metadata has to survive a restart too, or reopening a past
+    # conversation loses how the answer was reached.
+    assert reopened.turn_meta("t1") == [{"route": ["shipment"], "hops": 2}]
     second.close()
 
 

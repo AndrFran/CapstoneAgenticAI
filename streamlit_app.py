@@ -95,11 +95,9 @@ def open_conversation(thread_id: str) -> None:
     st.session_state.pending = None
     st.session_state.queued_prompt = None
     st.session_state.renaming = False
-    # Restored turns carry no trace metadata - that lived in the run result, not
-    # in the message history.
-    st.session_state.history = [
-        {**turn, "meta": {}} for turn in conversation_turns(thread_id)
-    ]
+    # Restored turns carry their recorded trace metadata, so a reopened
+    # conversation shows the route and severity, not just the text.
+    st.session_state.history = list(conversation_turns(thread_id))
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +135,9 @@ def render_intake(request: dict) -> None:
             else ""
         )
         st.warning(f"`{unknown['value']}` is not in our systems.{suggestion}")
+
+    if request.get("clarification_question"):
+        st.info(f"Need to know: {request['clarification_question']}")
 
     if request.get("extracted_by") == "regex":
         st.caption(

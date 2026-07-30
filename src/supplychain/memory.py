@@ -19,6 +19,7 @@ Owner: Team Member 1 (conversation memory and history).
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
 from dataclasses import dataclass, field
@@ -72,7 +73,22 @@ class ConversationStore:
     def upsert(self, thread_id: str, *, title: str | None = None) -> Conversation:
         raise NotImplementedError
 
-    def record_turn(self, thread_id: str, *, severity: str | None = None) -> None:
+    def record_turn(
+        self,
+        thread_id: str,
+        *,
+        severity: str | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> None:
+        raise NotImplementedError
+
+    def turn_meta(self, thread_id: str) -> list[dict[str, Any]]:
+        """Per-turn trace metadata, oldest first.
+
+        The checkpointer stores the messages; it does not store how an answer
+        was reached. Without this, reopening a past conversation would lose the
+        route, severity and intake summary.
+        """
         raise NotImplementedError
 
     def rename(self, thread_id: str, title: str) -> None:
@@ -93,6 +109,7 @@ class InMemoryConversationStore(ConversationStore):
 
     def __init__(self) -> None:
         self._rows: dict[str, Conversation] = {}
+        self._meta: dict[str, list[dict[str, Any]]] = {}
         self._lock = threading.Lock()
 
     def upsert(self, thread_id: str, *, title: str | None = None) -> Conversation:
@@ -117,7 +134,13 @@ class InMemoryConversationStore(ConversationStore):
             self._rows[thread_id] = row
             return row
 
-    def record_turn(self, thread_id: str, *, severity: str | None = None) -> None:
+    def record_turn(
+        self,
+        thread_id: str,
+        *,
+        severity: str | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> None:
         with self._lock:
             existing = self._rows.get(thread_id)
             if existing is None:
@@ -130,6 +153,10 @@ class InMemoryConversationStore(ConversationStore):
                 turns=existing.turns + 1,
                 last_severity=severity or existing.last_severity,
             )
+            self._meta.setdefault(thread_id, []).append(meta or {})
+
+    def turn_meta(self, thread_id: str) -> list[dict[str, Any]]:
+        return list(self._meta.get(thread_id) or [])
 
     def rename(self, thread_id: str, title: str) -> None:
         self.upsert(thread_id, title=derive_title(title))
@@ -137,6 +164,7 @@ class InMemoryConversationStore(ConversationStore):
     def delete(self, thread_id: str) -> None:
         with self._lock:
             self._rows.pop(thread_id, None)
+            self._meta.pop(thread_id, None)
 
     def get(self, thread_id: str) -> Conversation | None:
         return self._rows.get(thread_id)
@@ -160,11 +188,25 @@ class SqliteConversationStore(ConversationStore):
     )
     """
 
+    TURN_SCHEMA = """
+    CREATE TABLE IF NOT EXISTS conversation_turns (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        thread_id  TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        meta       TEXT NOT NULL
+    )
+    """
+
     def __init__(self, connection: sqlite3.Connection) -> None:
         self._conn = connection
         self._lock = threading.Lock()
         with self._lock:
             self._conn.execute(self.SCHEMA)
+            self._conn.execute(self.TURN_SCHEMA)
+            self._conn.execute(
+                "CREATE INDEX IF NOT EXISTS conversation_turns_thread "
+                "ON conversation_turns (thread_id, id)"
+            )
             self._conn.commit()
 
     def _row_to_conversation(self, row: tuple) -> Conversation:
@@ -203,14 +245,40 @@ class SqliteConversationStore(ConversationStore):
             self._conn.commit()
         return self.get(thread_id)  # type: ignore[return-value]
 
-    def record_turn(self, thread_id: str, *, severity: str | None = None) -> None:
+    def record_turn(
+        self,
+        thread_id: str,
+        *,
+        severity: str | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> None:
         with self._lock:
-            self._conn.execute(
+            cursor = self._conn.execute(
                 "UPDATE conversations SET turns = turns + 1, updated_at = ?, "
                 "last_severity = COALESCE(?, last_severity) WHERE thread_id = ?",
                 (_now(), severity, thread_id),
             )
+            if cursor.rowcount:
+                self._conn.execute(
+                    "INSERT INTO conversation_turns (thread_id, created_at, meta) "
+                    "VALUES (?, ?, ?)",
+                    (thread_id, _now(), json.dumps(meta or {}, default=str)),
+                )
             self._conn.commit()
+
+    def turn_meta(self, thread_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT meta FROM conversation_turns WHERE thread_id = ? ORDER BY id",
+                (thread_id,),
+            ).fetchall()
+        metas: list[dict[str, Any]] = []
+        for (blob,) in rows:
+            try:
+                metas.append(json.loads(blob))
+            except (TypeError, ValueError):
+                metas.append({})
+        return metas
 
     def rename(self, thread_id: str, title: str) -> None:
         self.upsert(thread_id, title=derive_title(title))
@@ -219,6 +287,9 @@ class SqliteConversationStore(ConversationStore):
         with self._lock:
             self._conn.execute(
                 "DELETE FROM conversations WHERE thread_id = ?", (thread_id,)
+            )
+            self._conn.execute(
+                "DELETE FROM conversation_turns WHERE thread_id = ?", (thread_id,)
             )
             # Also drop the thread's checkpoints so a delete really deletes.
             # Table names are discovered rather than hard-coded, so this keeps

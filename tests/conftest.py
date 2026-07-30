@@ -32,9 +32,49 @@ LLM_CREDENTIAL_VARS = (
 )
 
 
+# --- live tests -------------------------------------------------------------
+# The suite is hermetic by default. `pytest --live` opts in to the handful of
+# tests that call the real API, for verifying the model path before a demo.
+# They cost money and are non-deterministic, so they never run in CI.
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--live",
+        action="store_true",
+        default=False,
+        help="run tests that make real model calls (needs Google AI credentials)",
+    )
+
+
+# Hook parameters must be named exactly as pytest declares them, so `config`
+# here shadows the imported settings module inside these two functions only.
+def pytest_configure(config):  # noqa: A002 - pytest hook signature
+    config.addinivalue_line(
+        "markers", "live: makes a real model call; only runs with --live"
+    )
+
+
+def pytest_collection_modifyitems(config, items):  # noqa: A002 - pytest hook
+    if config.getoption("--live"):
+        return
+    skip = pytest.mark.skip(reason="needs --live (makes real API calls)")
+    for item in items:
+        if "live" in item.keywords:
+            item.add_marker(skip)
+
+
 @pytest.fixture(autouse=True)
-def no_llm_credentials(monkeypatch):
-    """Every test runs unconfigured unless it sets credentials itself."""
+def no_llm_credentials(monkeypatch, request):
+    """Every test runs unconfigured unless it sets credentials itself.
+
+    Tests marked ``live`` keep the developer's credentials - they exist
+    precisely to exercise the real model path.
+    """
+    if request.node.get_closest_marker("live"):
+        yield
+        return
+
     for name in LLM_CREDENTIAL_VARS:
         monkeypatch.delenv(name, raising=False)
     config.reload_settings()

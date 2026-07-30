@@ -177,7 +177,7 @@ table take over, and the UI shows which path was used.
 │   ├── generate_mock_data.py        # Regenerate the dataset
 │   ├── smoke_test.py                # Pre-flight check, no API key needed
 │   └── run_eval_conversations.py    # 12 traced conversations + latency stats
-├── tests/                           # 240 tests, none need an API key
+├── tests/                           # 246 tests, none need an API key
 │   ├── test_data_access.py          # Fixtures, relationships, runtime writes
 │   ├── test_tools.py                # All 34 tools, exact numbers
 │   ├── test_graph.py                # Routing, loop guard, HITL, actions
@@ -187,7 +187,8 @@ table take over, and the UI shows which path was used.
 │   ├── test_prompts.py              # Prompt versioning reaches LangSmith
 │   ├── test_config_llm.py           # Google AI wiring, reasoning effort
 │   ├── test_gemini_schemas.py       # Tool schemas convert for Gemini
-│   └── test_ui.py                   # Streamlit AppTest chat flow
+│   ├── test_ui.py                   # Streamlit AppTest chat flow
+│   └── test_live_agents.py          # Opt-in: real Gemini calls (--live)
 └── docs/
     ├── architecture.md              # Architecture + diagram
     ├── team-responsibilities.md     # Who owns what
@@ -221,7 +222,7 @@ a `{"data": [...]}` envelope). No tool code changes.
 ## Testing
 
 ```bash
-pytest                        # 240 tests
+pytest                        # 246 tests
 python scripts/smoke_test.py  # data + every tool + graph compile
 ```
 
@@ -230,6 +231,18 @@ lazily. That is deliberate: it keeps CI cheap and isolates data bugs from model
 behaviour. `tests/conftest.py` enforces it: even with a real key in `.env`, the
 suite removes it and pins conversation memory to the in-process back end, so a
 test run never calls the API or touches your real conversation history.
+
+To check the model path itself — before a demo, or after changing a prompt or
+the model:
+
+```bash
+pytest tests/test_live_agents.py --live
+```
+
+Eight tests, real Gemini calls, ~15s: intake extraction and normalisation,
+unsupported-request and missing-information handling, reference resolution from
+conversation memory, and that the Incident Analysis Agent uses the severity rule
+engine and the duplicate check rather than judging for itself.
 
 `test_gemini_schemas.py` is worth knowing about: `bind_tools` converts tool
 schemas *lazily*, so a tool signature Gemini cannot express would otherwise only

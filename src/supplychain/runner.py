@@ -84,6 +84,23 @@ class TurnResult:
     def used_fallback_extraction(self) -> bool:
         return (self.request or {}).get("extracted_by") == "regex"
 
+    def as_meta(self) -> dict[str, Any]:
+        """Trace metadata for this turn, persisted with the conversation.
+
+        The checkpointer keeps the messages; this keeps *how* the answer was
+        reached, so reopening a past conversation is not lossy.
+        """
+        return {
+            "route": self.route,
+            "severity": self.severity,
+            "findings": self.findings,
+            "executed_actions": self.executed_actions,
+            "request": self.request,
+            "entities": self.entities,
+            "latency": self.latency_seconds,
+            "hops": self.hops,
+        }
+
 
 def _interrupt_payload(result: dict[str, Any]) -> dict[str, Any] | None:
     """Pull the approval request out of a graph result that was interrupted."""
@@ -154,7 +171,8 @@ def run_turn(
         config=config,
     )
     turn = _to_turn_result(thread_id, result, time.perf_counter() - started)
-    store.record_turn(thread_id, severity=turn.severity)
+    if not turn.awaiting_approval:
+        store.record_turn(thread_id, severity=turn.severity, meta=turn.as_meta())
     return turn
 
 
@@ -194,9 +212,17 @@ def conversation_messages(thread_id: str) -> list[Any]:
     return list(snapshot.values.get("messages") or [])
 
 
-def conversation_turns(thread_id: str) -> list[dict[str, str]]:
-    """Message history as ``{role, content}`` pairs, ready to render."""
-    turns: list[dict[str, str]] = []
+def conversation_turns(thread_id: str) -> list[dict[str, Any]]:
+    """Message history as ``{role, content, meta}``, ready to render.
+
+    Assistant turns are paired with the trace metadata recorded when they ran,
+    so reopening a conversation restores the route, severity and intake summary
+    rather than just the text.
+    """
+    metas = memory.get_store().turn_meta(thread_id)
+    turns: list[dict[str, Any]] = []
+    assistant_index = 0
+
     for message in conversation_messages(thread_id):
         role = "assistant" if isinstance(message, AIMessage) else "user"
         content = message.content
@@ -206,8 +232,15 @@ def conversation_turns(thread_id: str) -> list[dict[str, str]]:
                 for block in (content or [])
                 if isinstance(block, dict)
             )
-        if content and content.strip():
-            turns.append({"role": role, "content": content.strip()})
+        if not content or not content.strip():
+            continue
+
+        entry: dict[str, Any] = {"role": role, "content": content.strip(), "meta": {}}
+        if role == "assistant":
+            if assistant_index < len(metas):
+                entry["meta"] = metas[assistant_index]
+            assistant_index += 1
+        turns.append(entry)
     return turns
 
 

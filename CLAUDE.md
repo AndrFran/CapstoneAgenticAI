@@ -18,11 +18,12 @@ A `.venv` exists at the repo root. On Windows PowerShell, prefix with
 `.\.venv\Scripts\python.exe -m` if it is not activated.
 
 ```bash
-pytest                                   # 240 tests, no API key needed
+pytest                                   # 246 tests, no API key needed
 pytest tests/test_tools.py               # one file
 pytest tests/test_tools.py::test_track_shipment_returns_full_record
 pytest -k "severity or transfer"         # by name
 pytest -o addopts="" --tb=short          # pyproject sets -q; this restores the summary line
+pytest tests/test_live_agents.py --live  # 8 real Gemini calls; needs GOOGLE_API_KEY
 
 python scripts/smoke_test.py             # data + all 33 tools + graph compile, no API key
 python scripts/generate_mock_data.py     # regenerate the committed JSON fixtures
@@ -103,6 +104,10 @@ has two autouse fixtures that delete `GOOGLE_API_KEY`/`GEMINI_API_KEY` and pin
 non-deterministic) and write to their real conversation history. A test that
 needs a model object sets the key itself — see `tests/test_config_llm.py`.
 
+The escape hatch is `pytest --live`, which runs only the tests marked `live`
+(`tests/test_live_agents.py`) and leaves the key in place for them. Use it to
+check the model path before a demo or after a prompt change; never in CI.
+
 ## Architecture
 
 ```
@@ -163,6 +168,12 @@ Two different things, both in `memory.py`:
 - **History** — a `conversations` table indexing which threads exist, with
   title/turns/last severity. LangGraph checkpointers have no notion of "which
   threads exist", so the UI's conversation list needs this index.
+
+The checkpointer stores the messages but not *how* an answer was reached, so
+`record_turn(..., meta=...)` also persists per-turn trace metadata (route,
+severity, hops, latency, intake summary) in a `conversation_turns` table.
+`runner.conversation_turns()` pairs assistant messages with it, which is what
+makes reopening a past conversation non-lossy.
 
 Default back end is SQLite at `.supplychain/conversations.sqlite` (git-ignored),
 so both survive a restart; `SUPPLYCHAIN_MEMORY_BACKEND=memory` is in-process

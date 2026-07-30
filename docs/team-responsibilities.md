@@ -16,7 +16,7 @@ owns, so two people editing at once do not collide.
 | `src/supplychain/memory.py` | Conversation memory (checkpointer) and history (conversation index). |
 | `src/supplychain/tools/incident.py` | Incident analysis tools + severity rules. |
 | `src/supplychain/prompts.py` | `SHARED_CONTEXT`, `INTAKE_PROMPT`, `INCIDENT_ANALYSIS_PROMPT`, and the versioning/changelog machinery. |
-| `tests/test_intake.py`, `tests/test_memory.py`, `tests/test_prompts.py`, `tests/test_ui.py` | Your tests. |
+| `tests/test_intake.py`, `tests/test_memory.py`, `tests/test_prompts.py`, `tests/test_ui.py`, `tests/test_live_agents.py` | Your tests. |
 
 **Brief coverage:** Chat UI · prompt engineering · conversation memory ·
 conversation history · system prompt · Request Intake Agent · Incident Analysis
@@ -59,7 +59,17 @@ duplicate check and an explicit no-writes boundary.
 
 **Chat UI** — conversation browser with severity badges, per-turn intake panel
 (what was understood, what was carried forward from memory, unknown ids with
-suggestions), workflow trace, markdown export, rename and delete.
+suggestions, any clarification needed), workflow trace, markdown export, rename
+and delete. Reopening a past conversation restores its trace metadata, not just
+the text, because each turn's route/severity/intake summary is persisted
+alongside the checkpoint.
+
+**Testing** — 246 hermetic tests plus 8 opt-in live ones
+(`pytest tests/test_live_agents.py --live`) that verify the model path: intake
+really uses the model and normalises sloppy ids, unsupported and
+under-specified requests are handled, references resolve from memory, and the
+Incident Analysis Agent calls the severity rule engine and the duplicate check
+instead of judging for itself.
 
 ### Notes for whoever picks this up
 
