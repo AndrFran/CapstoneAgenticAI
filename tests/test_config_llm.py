@@ -17,6 +17,9 @@ def isolated_settings(monkeypatch):
     for name in (
         "GOOGLE_API_KEY",
         "GEMINI_API_KEY",
+        "GOOGLE_GENAI_USE_VERTEXAI",
+        "GOOGLE_CLOUD_PROJECT",
+        "GOOGLE_CLOUD_LOCATION",
         "SUPPLYCHAIN_MODEL",
         "SUPPLYCHAIN_REASONING_EFFORT",
         "SUPPLYCHAIN_ROUTER_REASONING_EFFORT",
@@ -93,6 +96,48 @@ def test_models_are_built_against_google_ai(monkeypatch):
     assert worker.reasoning_effort == "medium"
     assert router.reasoning_effort == "low"
     assert router.max_output_tokens <= worker.max_output_tokens
+
+
+def test_vertex_mode_is_configured_without_an_api_key(monkeypatch):
+    monkeypatch.setenv("GOOGLE_GENAI_USE_VERTEXAI", "true")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "demo-project")
+    settings = config.reload_settings()
+    assert settings.google_api_key is None
+    assert settings.use_vertexai is True
+    assert settings.llm_configured is True
+
+
+def test_vertex_mode_without_a_project_is_not_configured(monkeypatch):
+    monkeypatch.setenv("GOOGLE_GENAI_USE_VERTEXAI", "true")
+    settings = config.reload_settings()
+    assert settings.llm_configured is False
+    llm.reset_llm_cache()
+    with pytest.raises(llm.LLMNotConfiguredError, match="GOOGLE_CLOUD_PROJECT"):
+        llm.get_llm("test")
+
+
+def test_vertex_models_build_without_an_api_key(monkeypatch):
+    """Construction must not need credentials - ADC resolves at request time."""
+    monkeypatch.setenv("GOOGLE_GENAI_USE_VERTEXAI", "true")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "demo-project")
+    config.reload_settings()
+    llm.reset_llm_cache()
+
+    from langchain_google_genai import ChatGoogleGenerativeAI
+
+    worker = llm.get_llm("worker")
+    assert isinstance(worker, ChatGoogleGenerativeAI)
+    assert llm.get_structured_llm("router") is not worker
+
+
+def test_gemini_2x_models_do_not_get_reasoning_effort(monkeypatch):
+    """Gemini 2.x rejects `thinking_level` at request time, so it must be omitted."""
+    monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+    monkeypatch.setenv("SUPPLYCHAIN_MODEL", "gemini-2.5-flash")
+    config.reload_settings()
+    llm.reset_llm_cache()
+    assert llm.get_llm("worker").reasoning_effort is None
+    assert llm.get_structured_llm("router").reasoning_effort is None
 
 
 def test_models_are_cached_per_tag(monkeypatch):

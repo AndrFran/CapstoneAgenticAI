@@ -15,6 +15,24 @@ from .common import as_json, days_until, error, normalise_id
 
 DELAY_STATUSES = {"delayed", "damaged", "at_customs"}
 
+ORDER_STATUSES = {"at_risk", "on_track"}
+
+
+def _shipment_not_found(shipment_id: str) -> str:
+    return error(
+        f"No shipment found with id {shipment_id!r}.",
+        hint="Shipment ids look like SHP-2026-0001.",
+        sample_ids=[s["shipment_id"] for s in access.load("shipments")[:5]],
+    )
+
+
+def _order_not_found(order_id: str) -> str:
+    return error(
+        f"No order found with id {order_id!r}.",
+        hint="Order ids look like ORD-2026-00001.",
+        sample_ids=[o["order_id"] for o in access.load("orders")[:5]],
+    )
+
 
 def _shipment_summary(shipment: dict) -> dict:
     warehouse = access.get_warehouse(shipment["destination_warehouse_id"]) or {}
@@ -60,11 +78,7 @@ def track_shipment(shipment_id: str) -> str:
     """
     shipment = access.get_shipment(normalise_id(shipment_id))
     if shipment is None:
-        return error(
-            f"No shipment found with id {shipment_id!r}.",
-            hint="Shipment ids look like SHP-2026-0001.",
-            sample_ids=[s["shipment_id"] for s in access.load("shipments")[:5]],
-        )
+        return _shipment_not_found(shipment_id)
     return as_json(_shipment_summary(shipment))
 
 
@@ -77,7 +91,7 @@ def get_shipment_status(shipment_id: str) -> str:
     """
     shipment = access.get_shipment(normalise_id(shipment_id))
     if shipment is None:
-        return error(f"No shipment found with id {shipment_id!r}.")
+        return _shipment_not_found(shipment_id)
     return as_json(
         {
             "shipment_id": shipment["shipment_id"],
@@ -100,7 +114,7 @@ def check_shipment_delay(shipment_id: str) -> str:
     """
     shipment = access.get_shipment(normalise_id(shipment_id))
     if shipment is None:
-        return error(f"No shipment found with id {shipment_id!r}.")
+        return _shipment_not_found(shipment_id)
 
     route = access.get_route(shipment.get("route_id", "")) or {}
     delay_hours = shipment.get("delay_hours", 0)
@@ -142,7 +156,7 @@ def estimate_delivery_delay(shipment_id: str) -> str:
     """
     shipment = access.get_shipment(normalise_id(shipment_id))
     if shipment is None:
-        return error(f"No shipment found with id {shipment_id!r}.")
+        return _shipment_not_found(shipment_id)
 
     route = access.get_route(shipment.get("route_id", "")) or {}
     base_delay = shipment.get("delay_hours", 0)
@@ -182,7 +196,7 @@ def find_affected_orders(shipment_id: str) -> str:
     shipment_id = normalise_id(shipment_id)
     shipment = access.get_shipment(shipment_id)
     if shipment is None:
-        return error(f"No shipment found with id {shipment_id!r}.")
+        return _shipment_not_found(shipment_id)
 
     orders = access.orders_for_shipment(shipment_id)
     at_risk = [o for o in orders if o["status"] == "at_risk"]
@@ -260,6 +274,7 @@ def check_delivery_route(route_id: str) -> str:
     if route is None:
         return error(
             f"No route found with id {route_id!r}.",
+            hint="Route ids look like RTE-101.",
             available_route_ids=[r["route_id"] for r in access.load("routes")],
         )
 
@@ -299,6 +314,92 @@ def check_delivery_route(route_id: str) -> str:
     )
 
 
+@tool
+def get_order_details(order_id: str) -> str:
+    """Look up one order: contents, promise date, status and the shipment carrying it.
+
+    Args:
+        order_id: NovaRetail order id, e.g. "ORD-2026-00001".
+    """
+    order = access.get_order(normalise_id(order_id))
+    if order is None:
+        return _order_not_found(order_id)
+
+    shipment = access.get_shipment(order.get("shipment_id", "")) or {}
+    return as_json(
+        {
+            "order_id": order["order_id"],
+            "status": order["status"],
+            "store_id": order["store_id"],
+            "customer_ref": order.get("customer_ref"),
+            "channel": order.get("channel"),
+            "sku": order["sku"],
+            "quantity": order["quantity"],
+            "promised_date": order.get("promised_date"),
+            "days_to_promised_date": days_until(order.get("promised_date")),
+            "shipment": {
+                "shipment_id": order.get("shipment_id"),
+                "status": shipment.get("status"),
+                "eta": shipment.get("eta"),
+                "delay_hours": shipment.get("delay_hours", 0),
+            },
+        }
+    )
+
+
+@tool
+def find_orders_by_store(store_id: str, status: str | None = None) -> str:
+    """List a store's orders and the shipments carrying them.
+
+    Args:
+        store_id: NovaRetail store id, e.g. "STR-104".
+        status: Optional filter, "at_risk" or "on_track".
+    """
+    store_id = normalise_id(store_id)
+    status_filter = (status or "").strip().lower() or None
+    if status_filter is not None and status_filter not in ORDER_STATUSES:
+        return error(
+            f"Unknown order status {status!r}.",
+            hint='Filter by "at_risk" or "on_track", or omit the filter.',
+        )
+
+    orders = access.orders_for_store(store_id)
+    if not orders:
+        return error(
+            f"No orders on record for store {store_id!r}.",
+            hint="Store ids look like STR-104.",
+            sample_ids=sorted({o["store_id"] for o in access.load("orders")})[:5],
+        )
+
+    selected = [o for o in orders if status_filter is None or o["status"] == status_filter]
+    return as_json(
+        {
+            "store_id": store_id,
+            "status_filter": status_filter,
+            "order_count": len(selected),
+            "at_risk_count": sum(1 for o in selected if o["status"] == "at_risk"),
+            "total_units": sum(o["quantity"] for o in selected),
+            "orders": [
+                {
+                    "order_id": o["order_id"],
+                    "status": o["status"],
+                    "sku": o["sku"],
+                    "quantity": o["quantity"],
+                    "promised_date": o["promised_date"],
+                    "channel": o["channel"],
+                    "shipment_id": o.get("shipment_id"),
+                    "shipment_status": (
+                        (access.get_shipment(o["shipment_id"]) or {}).get("status")
+                        if o.get("shipment_id")
+                        else None
+                    ),
+                }
+                for o in selected
+            ],
+        }
+    )
+
+
 SHIPMENT_TOOLS = [
     track_shipment,
     get_shipment_status,
@@ -307,4 +408,6 @@ SHIPMENT_TOOLS = [
     find_affected_orders,
     identify_delayed_shipments,
     check_delivery_route,
+    get_order_details,
+    find_orders_by_store,
 ]

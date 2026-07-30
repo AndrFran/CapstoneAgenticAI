@@ -1,0 +1,98 @@
+{
+  "summary": {
+    "provider": "google_genai",
+    "model": "gemini-2.5-flash",
+    "reasoning_effort": "medium",
+    "tracing_project": "novaretail-supplychain",
+    "conversations": 2,
+    "turns": 4,
+    "failed_cases": [],
+    "latency_seconds": {
+      "count": 4,
+      "min": 8.05,
+      "median": 14.01,
+      "mean": 16.1,
+      "p95": 17.49,
+      "max": 28.32
+    }
+  },
+  "cases": [
+    {
+      "case": "track_shipment",
+      "thread_id": "eval-track_shipment",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "What's the status of shipment SHP-2026-0002?",
+          "answer": "Shipment SHP-2026-0002 was delayed but has now been successfully rerouted to an alternate route.\n\n*   The initial delay was 72 hours, with a projected store availability delay of 126 hours.\n*   The cause was a disruption on route RTE-105 (I-16 closure), which would have added 6 hours to transit time.\n*   The shipment has been rerouted to RTE-111, which has a 3-day transit time.\n*   This rerouting cost $3,330 and prevents the additional 6-hour delay from the RTE-105 disruption.\n*   One order (ORD-2026-00003) for store STR-123 was affected.\n*   An incident record has been created to document the delay and the at-risk supplier (SUP-005).",
+          "route": [
+            "shipment",
+            "incident_analysis",
+            "recovery"
+          ],
+          "severity": "high",
+          "hops": 4,
+          "approvals_handled": 1,
+          "executed_actions": [
+            "reroute_shipment"
+          ],
+          "latency_seconds": 8.05,
+          "ok": true
+        }
+      ],
+      "total_seconds": 87.09,
+      "ok": true
+    },
+    {
+      "case": "multi_turn_memory",
+      "thread_id": "eval-multi_turn_memory",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "What's the status of SHP-2026-0002?",
+          "answer": "Shipment SHP-2026-0002 is currently in transit and delayed by 72 hours. The revised estimated time of arrival is 2026-08-02 at 17:00Z.\n\n*   The shipment was last scanned at the Port of Savannah, GA on 2026-07-30 at 04:30Z.\n*   The delay is likely due to supplier SUP-005 being at risk.\n*   This delay affects one order (ORD-2026-00003) and one store (STR-123).\n*   Store STR-123 is projected to experience a 96-hour delay in product availability.",
+          "route": [
+            "shipment"
+          ],
+          "severity": null,
+          "hops": 2,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 17.49,
+          "ok": true
+        },
+        {
+          "turn": 2,
+          "message": "Who's the supplier on that shipment, and are they reliable?",
+          "answer": "The supplier for shipment SHP-2026-0002 is Vantage Apparel Group (SUP-005). They are currently considered \"at_risk\".",
+          "route": [
+            "shipment"
+          ],
+          "severity": null,
+          "hops": 2,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 10.54,
+          "ok": true
+        },
+        {
+          "turn": 3,
+          "message": "What would it cost to source the same SKUs somewhere else?",
+          "answer": "To source the SKUs from shipment SHP-2026-0002 from an alternative supplier, there are two options with different costs and lead times.\n\n**Recommended Option: Cedarline Textiles (SUP-006)**\n*   Total Estimated Cost: $85,104\n    *   SKU-3001 (1200 units): $50,544 ($42.12/unit)\n    *   SKU-3002 (600 units): $34,560 ($57.6/unit)\n*   Lead Time: 6 days\n*   Reliability: 0.788\n\n**Alternative Option: Solstice Trading Partners (SUP-012)**\n*   Total Estimated Cost: $81,402\n    *   SKU-3001 (1200 units): $48,672 ($40.56/unit)\n    *   SKU-3002 (600 units): $32,730 ($54.55/unit)\n*   Lead Time: 16 days\n*   Reliability: 0.865",
+          "route": [
+            "shipment",
+            "supplier"
+          ],
+          "severity": null,
+          "hops": 3,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 28.32,
+          "ok": true
+        }
+      ],
+      "total_seconds": 56.35,
+      "ok": true
+    }
+  ]
+}
