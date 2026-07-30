@@ -1,0 +1,328 @@
+{
+  "summary": {
+    "provider": "google_genai",
+    "model": "gemini-2.5-flash",
+    "reasoning_effort": "medium",
+    "tracing_project": "novaretail-supplychain",
+    "conversations": 12,
+    "turns": 14,
+    "failed_cases": [],
+    "latency_seconds": {
+      "count": 14,
+      "min": 5.8,
+      "median": 14.39,
+      "mean": 17.33,
+      "p95": 28.44,
+      "max": 36.18
+    }
+  },
+  "cases": [
+    {
+      "case": "track_shipment",
+      "thread_id": "eval-track_shipment",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "What's the status of shipment SHP-2026-0002?",
+          "answer": "Shipment SHP-2026-0002 is delayed by 3 days, with a revised estimated arrival of 2026-08-02T17:00:00Z.\n\n*   The delay is due to a disruption on route RTE-105, where I-16 is closed westbound, adding 6 hours to the transit time. Supplier SUP-005 is also at risk.\n*   One order (ORD-2026-00003) for store STR-123 is affected.\n*   An alternate route, RTE-111 (truck, from Port of Charleston, SC), is available and clear with a 3-day transit time.",
+          "route": [
+            "shipment"
+          ],
+          "severity": null,
+          "hops": 2,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 25.5,
+          "ok": true
+        }
+      ],
+      "total_seconds": 25.52,
+      "ok": true
+    },
+    {
+      "case": "delay_impact",
+      "thread_id": "eval-delay_impact",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "SHP-2026-0002 is late into WH-N02. What's the impact and what should we do?",
+          "answer": "Shipment SHP-2026-0002 is delayed by 72 hours, pushing its ETA to 2026-08-02T17:00:00Z and causing a critical inventory shortfall for SKU-3001 and SKU-3002 at WH-N02. An inventory transfer plan is recommended to mitigate the impact.\n\n*   The shipment's original ETA was 2026-07-30T17:00:00Z, making the new ETA 2026-08-02T17:00:00Z.\n*   This delay results in an estimated 5.25-day delay for store availability.\n*   The delay is due to a disruption on route RTE-105 (I-16 closure) and supplier SUP-005 (Vantage Apparel Group) being at risk.\n*   One order, ORD-2026-00003 for store STR-123 (143 units of SKU-3001), is now at risk.\n*   **SKU-3001 (TrailRunner Sneakers):** WH-N02 has 23 available units, providing 0.2 days of cover. There is a shortfall of 1821 units.\n*   **SKU-3002 (AllWeather Rain Jacket):** WH-N02 has 374 available units, providing 3.1 days of cover. There is a shortfall of 1306 units.\n\nTo recover 3 days of delay and avoid a combined cost of inaction of $35,960.50, the following transfers are recommended at a combined cost of $1,938.74:\n*   **SKU-3001:** Transfer 1821 units from WH-N07 (Memphis RDC) to WH-N02.\n*   **SKU-3002:** Transfer 1254 units from WH-N05 (Ontario RDC) and 52 units from WH-N08 (Denver RDC) to WH-N02. These transfers have a lead time of 2 days.\n\nIncident INC-2026-0003 has been created with high severity and escalation to relevant stakeholders is recommended.",
+          "route": [
+            "incident_analysis",
+            "shipment",
+            "inventory",
+            "recovery"
+          ],
+          "severity": "high",
+          "hops": 5,
+          "approvals_handled": 1,
+          "executed_actions": [
+            "create_incident"
+          ],
+          "latency_seconds": 10.65,
+          "ok": true
+        }
+      ],
+      "total_seconds": 103.76,
+      "ok": true
+    },
+    {
+      "case": "affected_orders",
+      "thread_id": "eval-affected_orders",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "Which orders are affected by the delay on SHP-2026-0001?",
+          "answer": "Two orders are affected by the delay on shipment SHP-2026-0001, both are currently at risk.\n\n*   ORD-2026-00001 (SKU-1003, 143 units) for store STR-127, promised by 2026-08-02.\n*   ORD-2026-00002 (SKU-1001, 91 units) for store STR-101, promised by 2026-08-02.",
+          "route": [
+            "shipment"
+          ],
+          "severity": null,
+          "hops": 2,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 10.77,
+          "ok": true
+        }
+      ],
+      "total_seconds": 10.77,
+      "ok": true
+    },
+    {
+      "case": "delay_backlog",
+      "thread_id": "eval-delay_backlog",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "Which shipments are delayed right now, and which warehouse is worst hit?",
+          "answer": "There are 21 delayed shipments in total. The warehouse worst hit by delays is WH-N03, with 5 delayed shipments.\n\nHere is a list of all currently delayed shipments:\n\n*   **SHP-2026-0002**: 72 hours delay, ETA 2026-08-02T17:00:00Z, destination WH-N02, status: delayed\n*   **SHP-2026-0023**: 48 hours delay, ETA 2026-08-01T17:00:00Z, destination WH-N03, status: out_for_delivery\n*   **SHP-2026-0001**: 36 hours delay, ETA 2026-07-30T17:00:00Z, destination WH-N04, status: delayed\n*   **SHP-2026-0007**: 24 hours delay, ETA 2026-07-29T17:00:00Z, destination WH-N02, status: in_transit\n*   **SHP-2026-0008**: 24 hours delay, ETA 2026-07-29T17:00:00Z, destination WH-N01, status: in_transit\n*   **SHP-2026-0021**: 24 hours delay, ETA 2026-07-30T17:00:00Z, destination WH-N02, status: in_transit\n*   **SHP-2026-0024**: 24 hours delay, ETA 2026-07-31T17:00:00Z, destination WH-N03, status: at_customs\n*   **SHP-2026-0006**: 18 hours delay, ETA 2026-07-28T17:00:00Z, destination WH-N05, status: at_customs\n*   **SHP-2026-0005**: 12 hours delay, ETA 2026-07-28T17:00:00Z, destination WH-N08, status: damaged\n*   **SHP-2026-0009**: 12 hours delay, ETA 2026-07-30T17:00:00Z, destination WH-N01, status: in_transit\n*   **SHP-2026-0011**: 12 hours delay, ETA 2026-07-29T17:00:00Z, destination WH-N08, status: delayed\n*   **SHP-2026-0019**: 12 hours delay, ETA 2026-07-29T17:00:00Z, destination WH-N04, status: delayed\n*   **SHP-2026-0020**: 12 hours delay, ETA 2026-07-28T17:00:00Z, destination WH-N08, status: delayed\n*   **SHP-2026-0010**: 6 hours delay, ETA 2026-07-30T17:00:00Z, destination WH-N01, status: in_transit\n*   **SHP-2026-0012**: 6 hours delay, ETA 2026-07-30T17:00:00Z, destination WH-N03, status: delayed\n*   **SHP-2026-0014**: 6 hours delay, ETA 2026-07-30T17:00:00Z, destination WH-N03, status: damaged\n*   **SHP-2026-0025**: 6 hours delay, ETA 2026-07-30T17:00:00Z, destination WH-N03, status: out_for_delivery\n*   **SHP-2026-0028**: 6 hours delay, ETA 2026-07-30T17:00:00Z, destination WH-N02, status: delayed\n*   **SHP-2026-0013**: 0 hours delay, ETA 2026-07-28T17:00:00Z, destination WH-N06, status: damaged\n*   **SHP-2026-0015**: 0 hours delay, ETA 2026-07-28T17:00:00Z, destination WH-N04, status: at_customs\n*   **SHP-2026-0026**: 0 hours delay, ETA 2026-07-30T17:00:00Z, destination WH-N04, status: at_customs",
+          "route": [
+            "shipment"
+          ],
+          "severity": null,
+          "hops": 2,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 26.77,
+          "ok": true
+        }
+      ],
+      "total_seconds": 26.77,
+      "ok": true
+    },
+    {
+      "case": "inventory_shortage",
+      "thread_id": "eval-inventory_shortage",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "We're short on SKU-1001 at WH-N04. Can we cover it from another warehouse?",
+          "answer": "Yes, the shortage of SKU-1001 at WH-N04 can be covered by a transfer from WH-N03.\n\n*   WH-N04 currently has 0 units of SKU-1001 and requires 518 units to achieve 14 days of cover.\n*   518 units can be transferred from WH-N03 (Columbus RDC).\n*   The lead time for this transfer would be 2 days.",
+          "route": [
+            "inventory"
+          ],
+          "severity": null,
+          "hops": 2,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 16.51,
+          "ok": true
+        }
+      ],
+      "total_seconds": 16.51,
+      "ok": true
+    },
+    {
+      "case": "warehouse_availability",
+      "thread_id": "eval-warehouse_availability",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "How is stock looking at WH-N02 - anything below reorder point?",
+          "answer": "WH-N02 has 6 SKUs currently below their reorder point.\n\n*   **SKU-3001**: 23 available (0.2 days cover). Reorder point: 876.\n*   **SKU-4001**: 108 available (0.4 days cover). Reorder point: 2024.\n*   **SKU-1002**: 473 available (2.4 days cover). Reorder point: 1358.\n*   **SKU-3002**: 374 available (3.1 days cover). Reorder point: 480.\n*   **SKU-2003**: 295 available (3.9 days cover). Reorder point: 456.\n*   **SKU-5001**: 592 available (6 days cover). Reorder point: 594.",
+          "route": [
+            "inventory"
+          ],
+          "severity": null,
+          "hops": 2,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 22.33,
+          "ok": true
+        }
+      ],
+      "total_seconds": 22.33,
+      "ok": true
+    },
+    {
+      "case": "supplier_failure",
+      "thread_id": "eval-supplier_failure",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "SUP-005 has missed two delivery windows. Find me alternatives for SKU-3001 and compare them on cost and lead time.",
+          "answer": "Two alternative suppliers have been identified for SKU-3001.\n\n*   **SUP-006 (Cedarline Textiles)**: 6 days lead time, unit price $42.12.\n*   **SUP-012 (Solstice Trading Partners)**: 16 days lead time, unit price $40.56.\n\nBoth suppliers have a minimum order quantity of 250 units. To compare their landed costs, please provide the quantity you wish to procure.",
+          "route": [
+            "supplier"
+          ],
+          "severity": null,
+          "hops": 2,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 28.44,
+          "ok": true
+        }
+      ],
+      "total_seconds": 28.44,
+      "ok": true
+    },
+    {
+      "case": "damaged_goods",
+      "thread_id": "eval-damaged_goods",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "SHP-2026-0005 arrived damaged at WH-N08. Assess the loss and raise an incident.",
+          "answer": "Incident INC-2026-0005 has been created to record the damage to shipment SHP-2026-0005 at WH-N08, resulting in a total loss of $5,409.90.\n\nSupporting facts:\n*   Incident ID: INC-2026-0005 (high severity)\n*   Total value lost: $5,409.90 USD\n*   Total damaged units: 216 out of 1200 units (18% damage rate)\n*   **SKU-2001 (HearthPan 12in Skillet):** 126 units damaged, $3,452.40 value lost. No shortage after damage.\n*   **SKU-2002 (LumenLamp LED Desk Lamp):** 90 units damaged, $1,957.50 value lost. A shortage of 352 units exists, as available stock is now below the reorder point.\n\nTo address the shortage of SKU-2002, an inventory transfer of 352 units from WH-N01, WH-N05, or WH-N06 to WH-N08 is recommended. This recovery option has an estimated cost of $218.24 and an estimated lead time of 2 days.",
+          "route": [
+            "incident_analysis",
+            "inventory",
+            "recovery"
+          ],
+          "severity": "high",
+          "hops": 4,
+          "approvals_handled": 1,
+          "executed_actions": [
+            "create_incident"
+          ],
+          "latency_seconds": 12.28,
+          "ok": true
+        }
+      ],
+      "total_seconds": 66.59,
+      "ok": true
+    },
+    {
+      "case": "incident_status",
+      "thread_id": "eval-incident_status",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "What's the status of incident INC-2026-0001, and should it be escalated?",
+          "answer": "Incident INC-2026-0001 is open and has been escalated to the Operations Manager, with its severity now classified as critical.\n\n*   **Shipment SHP-2026-0002** is delayed by 72 hours, with a revised ETA of 2026-08-02 17:00:00 UTC. The total projected downstream delay is 102 hours, leading to a 126-hour store availability delay.\n*   **Route RTE-105** is disrupted due to an I-16 westbound closure, adding 6 hours to transit time.\n*   **Supplier SUP-005** is flagged as at-risk.\n*   **SKU-3001 at WH-N02** has 23 units available, providing 0.2 days of cover, and is below safety stock. One order, ORD-2026-00003 for 143 units, is at risk.\n\nA recommended recovery action is an inventory transfer of 143 units of SKU-3001 from WH-N07, WH-N05, or WH-N04 to WH-N02. This action costs $88.66 and recovers 3 days of delay.",
+          "route": [
+            "incident_analysis",
+            "shipment",
+            "inventory",
+            "recovery"
+          ],
+          "severity": "high",
+          "hops": 5,
+          "approvals_handled": 1,
+          "executed_actions": [
+            "escalate_incident"
+          ],
+          "latency_seconds": 5.8,
+          "ok": true
+        }
+      ],
+      "total_seconds": 87.79,
+      "ok": true
+    },
+    {
+      "case": "multi_turn_memory",
+      "thread_id": "eval-multi_turn_memory",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "What's the status of SHP-2026-0002?",
+          "answer": "Shipment SHP-2026-0002 is delayed, and an incident (INC-2026-0006) has been created to track it. The \"Accept and Communicate\" recovery option has been approved.\n\n*   **Revised ETA:** 2026-08-02 17:00:00Z\n*   **Total Delay:** 72 hours (3 days)\n*   **Value of Shipment:** $90,240\n*   **Reason for Delay:** Disruption on route RTE-105 (I-16 closed westbound adding 6 hours) and supplier SUP-005 being at risk.\n*   **Affected Order:** ORD-2026-00003 for store STR-123 is now at risk.\n*   **Incident Severity:** High\n*   **Recovery Option Cost:** $0 (direct cost), with a cost of inaction of $1,725 due to the delay.",
+          "route": [
+            "shipment",
+            "incident_analysis",
+            "recovery"
+          ],
+          "severity": "high",
+          "hops": 4,
+          "approvals_handled": 1,
+          "executed_actions": [
+            "create_incident"
+          ],
+          "latency_seconds": 6.81,
+          "ok": true
+        },
+        {
+          "turn": 2,
+          "message": "Who's the supplier on that shipment, and are they reliable?",
+          "answer": "The supplier for the shipment is Vantage Apparel Group (SUP-005). They are currently considered at-risk due to their reliability.\n\n*   Reliability score: 0.763\n*   On-time delivery rate: 0.809\n*   They currently have 2 delayed shipments.",
+          "route": [
+            "supplier"
+          ],
+          "severity": null,
+          "hops": 2,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 23.64,
+          "ok": true
+        },
+        {
+          "turn": 3,
+          "message": "What would it cost to source the same SKUs somewhere else?",
+          "answer": "The cost to source the SKUs from shipment SHP-2026-0002 from alternative suppliers ranges from $81,402 to $85,104, with lead times varying from 6 to 16 days.\n\n*   **Option 1: Cedarline Textiles (SUP-006)**\n    *   Total Estimated Procurement Cost: $85,104\n    *   Lead Time: 6 days\n    *   Includes:\n        *   SKU-3001 (1200 units): $50,544\n        *   SKU-3002 (600 units): $34,560\n*   **Option 2: Solstice Trading Partners (SUP-012)**\n    *   Total Estimated Procurement Cost: $81,402\n    *   Lead Time: 16 days\n    *   Includes:\n        *   SKU-3001 (1200 units): $48,672\n        *   SKU-3002 (600 units): $32,730",
+          "route": [
+            "shipment",
+            "supplier"
+          ],
+          "severity": null,
+          "hops": 3,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 36.18,
+          "ok": true
+        }
+      ],
+      "total_seconds": 157.81,
+      "ok": true
+    },
+    {
+      "case": "unsupported_request",
+      "thread_id": "eval-unsupported_request",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "Can you reset my email password?",
+          "answer": "I cannot reset your email password as this assistant is designed to handle requests related to NovaRetail Group's supply chain operations, such as shipment tracking, inventory levels, supplier information, and incident reporting. Please contact your IT department for password assistance.",
+          "route": [],
+          "severity": null,
+          "hops": 1,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 9.98,
+          "ok": true
+        }
+      ],
+      "total_seconds": 9.98,
+      "ok": true
+    },
+    {
+      "case": "missing_information",
+      "thread_id": "eval-missing_information",
+      "turns": [
+        {
+          "turn": 1,
+          "message": "A shipment is late, can you look into it?",
+          "answer": "I can help investigate a late shipment. Please provide the shipment ID you are referring to.",
+          "route": [],
+          "severity": null,
+          "hops": 1,
+          "approvals_handled": 0,
+          "executed_actions": [],
+          "latency_seconds": 7.01,
+          "ok": true
+        }
+      ],
+      "total_seconds": 7.01,
+      "ok": true
+    }
+  ]
+}
