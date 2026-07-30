@@ -33,7 +33,8 @@ python -m venv .venv
 pip install -r requirements.txt
 
 copy .env.example .env          # Windows  (cp on macOS/Linux)
-#  → add GOOGLE_API_KEY, and LANGSMITH_API_KEY for tracing
+#  → add GOOGLE_API_KEY (or Vertex AI settings, see Configuration),
+#    and LANGSMITH_API_KEY for tracing
 
 python scripts/smoke_test.py    # verifies data + tools + graph, no API key needed
 streamlit run streamlit_app.py
@@ -50,7 +51,8 @@ annotated list.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `GOOGLE_API_KEY` | — | **Required.** Get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). `GEMINI_API_KEY` is also accepted. |
+| `GOOGLE_API_KEY` | — | **Required** unless using Vertex AI (below). Get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). `GEMINI_API_KEY` is also accepted. |
+| `GOOGLE_GENAI_USE_VERTEXAI` | `false` | Set `true` to use the Vertex AI backend instead of an API key. Needs `GOOGLE_CLOUD_PROJECT` (+ optional `GOOGLE_CLOUD_LOCATION`, default `global`) and `gcloud auth application-default login`. |
 | `SUPPLYCHAIN_MODEL` | `gemini-3.1-flash-lite` | Model for every agent. `gemini-3.6-flash` is the step up for harder agentic reasoning. |
 | `SUPPLYCHAIN_REASONING_EFFORT` | `medium` | Worker-agent thinking depth: `minimal` · `low` · `medium` · `high`. |
 | `SUPPLYCHAIN_ROUTER_REASONING_EFFORT` | `low` | Thinking depth for intake extraction and routing. |
@@ -147,7 +149,7 @@ table take over, and the UI shows which path was used.
 │   │   ├── supervisor.py            # Supervisor Agent (TM4)
 │   │   └── responder.py             # Final response (TM4)
 │   ├── tools/
-│   │   ├── shipment.py              # 7 tools (TM2)
+│   │   ├── shipment.py              # 9 tools (TM2)
 │   │   ├── inventory.py             # 6 tools (TM3)
 │   │   ├── supplier.py              # 6 tools (TM3)
 │   │   ├── incident.py              # 6 tools (TM1)
@@ -163,8 +165,9 @@ table take over, and the UI shows which path was used.
 │   └── run_eval_conversations.py    # 12 traced conversations + latency stats
 ├── tests/                           # 150 tests, none need an API key
 │   ├── test_data_access.py          # Fixtures, relationships, runtime writes
-│   ├── test_tools.py                # All 31 tools, exact numbers
+│   ├── test_tools.py                # All 33 tools, exact numbers
 │   ├── test_graph.py                # Routing, loop guard, HITL, actions
+│   ├── test_shipment_agent.py       # Shipment Agent behaviour (fake LLM)
 │   ├── test_config_llm.py           # Google AI wiring, reasoning effort
 │   ├── test_gemini_schemas.py       # Tool schemas convert for Gemini
 │   └── test_ui.py                   # Streamlit AppTest chat flow
@@ -211,7 +214,7 @@ behaviour.
 
 `test_gemini_schemas.py` is worth knowing about: `bind_tools` converts tool
 schemas *lazily*, so a tool signature Gemini cannot express would otherwise only
-fail on the first live request. That test converts all 31 up front and rejects
+fail on the first live request. That test converts all 33 up front and rejects
 parameter types outside scalars and lists of scalars.
 
 ## LangSmith tracing and evaluation

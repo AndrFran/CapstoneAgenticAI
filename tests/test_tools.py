@@ -105,6 +105,79 @@ def test_check_delivery_route_surfaces_disruption_and_alternates():
     assert result["alternates"]
 
 
+@pytest.mark.parametrize(
+    "tool",
+    [
+        shipment_tools.track_shipment,
+        shipment_tools.get_shipment_status,
+        shipment_tools.check_shipment_delay,
+        shipment_tools.estimate_delivery_delay,
+        shipment_tools.find_affected_orders,
+    ],
+    ids=lambda t: t.name,
+)
+def test_shipment_tools_bad_id_errors_are_self_correcting(tool):
+    result = call(tool, shipment_id="SHP-0000-0000")
+    assert "error" in result
+    assert result["hint"]
+    assert result["sample_ids"]
+
+
+def test_check_delivery_route_bad_id_error_is_self_correcting():
+    result = call(shipment_tools.check_delivery_route, route_id="RTE-999")
+    assert "error" in result
+    assert result["hint"]
+    assert result["available_route_ids"]
+
+
+def test_get_order_details_joins_the_carrying_shipment():
+    from supplychain.data import access
+
+    result = call(shipment_tools.get_order_details, order_id="ORD-2026-00001")
+    order = access.get_order("ORD-2026-00001")
+    assert result["status"] == order["status"]
+    assert result["quantity"] == order["quantity"]
+    assert result["shipment"]["shipment_id"] == order["shipment_id"]
+    assert result["shipment"]["status"] == access.get_shipment(order["shipment_id"])["status"]
+    # Promised 2026-08-02, scenario today 2026-07-30.
+    assert result["days_to_promised_date"] == 3
+
+
+def test_get_order_details_unknown_id_returns_error_not_exception():
+    result = call(shipment_tools.get_order_details, order_id="ORD-0000-00000")
+    assert "error" in result
+    assert result["hint"]
+    assert result["sample_ids"]
+
+
+def test_find_orders_by_store_matches_data_layer_and_filters():
+    from supplychain.data import access
+
+    store_id = access.get_order("ORD-2026-00001")["store_id"]
+    everything = call(shipment_tools.find_orders_by_store, store_id=store_id)
+    assert everything["order_count"] == len(access.orders_for_store(store_id))
+    assert everything["order_count"] > 0
+    assert all(o["shipment_status"] for o in everything["orders"])
+
+    at_risk = call(
+        shipment_tools.find_orders_by_store, store_id=store_id, status="at_risk"
+    )
+    assert all(o["status"] == "at_risk" for o in at_risk["orders"])
+    assert at_risk["at_risk_count"] == at_risk["order_count"]
+
+
+def test_find_orders_by_store_rejects_bad_inputs_gracefully():
+    unknown = call(shipment_tools.find_orders_by_store, store_id="STR-999")
+    assert "error" in unknown
+    assert unknown["sample_ids"]
+
+    bad_status = call(
+        shipment_tools.find_orders_by_store, store_id="STR-104", status="late"
+    )
+    assert "error" in bad_status
+    assert "at_risk" in bad_status["hint"]
+
+
 # ---------------------------------------------------------------------------
 # Inventory tools
 # ---------------------------------------------------------------------------

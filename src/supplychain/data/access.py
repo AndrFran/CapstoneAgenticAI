@@ -226,6 +226,14 @@ def search_suppliers(query: str) -> list[Record]:
     return hits
 
 
+def get_order(order_id: str) -> Record | None:
+    return find_one("orders", order_id=order_id)
+
+
+def orders_for_store(store_id: str) -> list[Record]:
+    return find_all("orders", store_id=store_id)
+
+
 # ---------------------------------------------------------------------------
 # Writes (runtime store)
 # ---------------------------------------------------------------------------

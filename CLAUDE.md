@@ -24,7 +24,7 @@ pytest tests/test_tools.py::test_track_shipment_returns_full_record
 pytest -k "severity or transfer"         # by name
 pytest -o addopts="" --tb=short          # pyproject sets -q; this restores the summary line
 
-python scripts/smoke_test.py             # data + all 31 tools + graph compile, no API key
+python scripts/smoke_test.py             # data + all 33 tools + graph compile, no API key
 python scripts/generate_mock_data.py     # regenerate the committed JSON fixtures
 python scripts/run_eval_conversations.py # 12 traced conversations + latency stats (needs keys)
 python scripts/run_eval_conversations.py --case delay_impact   # one case
@@ -80,7 +80,7 @@ terminating.
 Scalars and lists of scalars only (`str`, `int`, `float`, `bool`, `list[str]`,
 and their `| None` forms). `bind_tools` converts **lazily**, so a bad signature
 would only fail on the first live request —
-`tests/test_gemini_schemas.py` converts all 31 tools up front and enforces the
+`tests/test_gemini_schemas.py` converts all 33 tools up front and enforces the
 allowlist. Nested containers and dict params will fail that test.
 
 **6. Tool failures are data, never exceptions.** Every tool returns a JSON

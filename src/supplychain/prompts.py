@@ -116,6 +116,8 @@ You can:
 - identify_delayed_shipments - the current delay backlog, optionally by
   warehouse
 - check_delivery_route - route status, disruptions and alternates
+- get_order_details - one order's status, promise date and carrying shipment
+- find_orders_by_store - a store's orders, optionally only the at-risk ones
 
 Rules:
 - When a shipment is delayed, always quantify the delay and check the affected

@@ -67,6 +67,16 @@ class Settings:
 
     # LLM (Google AI / Gemini)
     google_api_key: str | None = field(default_factory=_google_api_key)
+    # Vertex AI backend: langchain-google-genai 4.x selects Vertex from these
+    # standard google-genai env vars and authenticates with gcloud ADC, so no
+    # API key is needed. GOOGLE_CLOUD_LOCATION (default "global") is read by
+    # the SDK itself.
+    use_vertexai: bool = field(
+        default_factory=lambda: _bool("GOOGLE_GENAI_USE_VERTEXAI", False)
+    )
+    google_cloud_project: str | None = field(
+        default_factory=lambda: os.getenv("GOOGLE_CLOUD_PROJECT") or None
+    )
     model: str = field(
         default_factory=lambda: os.getenv("SUPPLYCHAIN_MODEL", "gemini-3.1-flash-lite")
     )
@@ -107,6 +117,8 @@ class Settings:
 
     @property
     def llm_configured(self) -> bool:
+        if self.use_vertexai:
+            return bool(self.google_cloud_project)
         return bool(self.google_api_key)
 
     @property
