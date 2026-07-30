@@ -195,12 +195,18 @@ def build_context_block(state: dict[str, Any]) -> str:
             ("skus", "skus"),
             ("warehouse_ids", "warehouses"),
             ("order_ids", "orders"),
+            ("route_ids", "routes"),
             ("incident_ids", "incidents"),
             ("quantities", "quantities"),
         ):
             values = request.get(field) or []
             if values:
                 lines.append(f"  {label}: {', '.join(str(v) for v in values)}")
+        if request.get("resolved_from_memory"):
+            lines.append(
+                "  carried forward from earlier in the conversation: "
+                + ", ".join(request["resolved_from_memory"])
+            )
         if request.get("missing_information"):
             lines.append(
                 "  missing: " + "; ".join(request["missing_information"])

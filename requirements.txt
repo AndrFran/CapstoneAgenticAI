@@ -6,6 +6,8 @@ langchain>=1.3.0,<2
 langchain-core>=1.5.0,<2
 langgraph>=1.2.0,<2
 langgraph-checkpoint>=4.1.0
+# Durable conversation memory + history (SUPPLYCHAIN_MEMORY_BACKEND=sqlite)
+langgraph-checkpoint-sqlite>=3.1.0
 
 # LLM provider (Google AI / Gemini)
 langchain-google-genai>=4.3.0,<5
@@ -15,6 +17,9 @@ langsmith>=0.10.0
 
 # UI
 streamlit>=1.60.0
+# Streamlit already pulls pandas in, but streamlit_app.py imports it directly
+# to build the answer charts, so it is declared rather than assumed.
+pandas>=2.2.0
 
 # Support
 pydantic>=2.13.0

@@ -224,3 +224,6 @@ src/supplychain/data/runtime/
 # Claude Code session config and planning artifacts (local only)
 .claude/
 tasks/
+
+# Conversation memory and history (SQLite checkpointer + conversation index).
+.supplychain/

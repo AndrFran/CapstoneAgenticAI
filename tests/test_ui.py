@@ -17,22 +17,14 @@ AppTest = pytest.importorskip("streamlit.testing.v1").AppTest
 
 
 @pytest.fixture
-def no_api_key(monkeypatch):
-    """Run the app as if no Google AI key were configured.
+def no_api_key():
+    """Run the app as if no Google AI credentials were configured.
 
-    Settings are cached, so deleting the variables is not enough - the snapshot
-    has to be rebuilt and the model cache cleared. This keeps the test honest on
-    a developer machine that does have a key exported.
+    conftest's autouse `no_llm_credentials` fixture already strips every
+    credential variable (API key and Vertex AI alike) and rebuilds the cached
+    settings, so this is just a readable name for that state at the call site.
     """
-    from supplychain import config, llm
-
-    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    config.reload_settings()
-    llm.reset_llm_cache()
     yield
-    config.reload_settings()
-    llm.reset_llm_cache()
 
 
 def fresh_app():
@@ -58,7 +50,7 @@ def test_sidebar_reports_the_data_layer(no_api_key):
 def test_every_sample_prompt_has_a_button(no_api_key):
     app = fresh_app()
     labels = {button.label for button in app.button}
-    assert "New conversation" in labels
+    assert any("New conversation" in label for label in labels)
     assert len(labels) >= 7  # six samples plus New conversation
 
 
@@ -73,17 +65,24 @@ def test_chat_turn_without_a_key_answers_instead_of_crashing(no_api_key):
     assert "GOOGLE_API_KEY" in app.session_state["history"][1]["content"]
 
 
-def test_new_conversation_clears_history(no_api_key):
+def test_new_conversation_starts_a_fresh_thread(no_api_key):
     app = fresh_app()
     app.chat_input[0].set_value("Which shipments are delayed?").run()
     assert app.session_state["history"]
 
     thread_before = app.session_state["thread_id"]
-    next(b for b in app.button if b.label == "New conversation").click().run()
+    next(b for b in app.button if "New conversation" in b.label).click().run()
 
     assert app.session_state["history"] == []
     assert app.session_state["thread_id"] != thread_before
     assert not app.exception
+
+
+def test_sidebar_reports_the_memory_backend(no_api_key):
+    app = fresh_app()
+    captions = " ".join(caption.value for caption in app.caption)
+    assert "Memory:" in captions
+    assert "in-process only" in captions  # conftest pins the memory back end
 
 
 def test_sample_prompt_button_starts_a_turn(no_api_key):

@@ -63,6 +63,9 @@ annotated list.
 | `SUPPLYCHAIN_API_BASE_URL` | — | Blank reads the JSON fixtures; set it to use the mock REST API instead. |
 | `SUPPLYCHAIN_MAX_HOPS` | `8` | Supervisor loop guard. |
 | `SUPPLYCHAIN_REQUIRE_APPROVAL` | `true` | Human-in-the-loop gate on write actions. |
+| `SUPPLYCHAIN_MEMORY_BACKEND` | `sqlite` | `sqlite` persists conversations across restarts; `memory` is in-process only. |
+| `SUPPLYCHAIN_MEMORY_PATH` | `.supplychain/conversations.sqlite` | Where conversation memory and history live. |
+| `SUPPLYCHAIN_ENTITY_MEMORY_DEPTH` | `3` | Identifiers of each kind a conversation remembers. |
 
 ## What it can do
 
@@ -86,6 +89,16 @@ escalate a critical incident (with approval).
 **Recovery planning** — ranked recovery options from the live position · cost of
 the option against the cost of inaction · reroute a shipment (with approval) ·
 stakeholder summary.
+
+**Understanding the request** — operations staff do not type canonical ids, so
+`shp 2026 2`, `SHP_2026_02` and `shipment SHP/2026/0002` all resolve to
+`SHP-2026-0002`. An id that does not exist comes back with close matches ("did
+you mean SHP-2026-0020?") rather than failing inside an agent.
+
+**Conversation memory** — follow-up questions work: ask about a shipment, then
+"who's the supplier on that one?" and "what would it cost to source the same
+SKUs elsewhere?" without repeating an identifier. Conversations persist across
+restarts and can be reopened, renamed, exported or deleted from the sidebar.
 
 Try the sample prompts in the sidebar, or:
 
@@ -131,6 +144,8 @@ table take over, and the UI shows which path was used.
 ```
 .
 ├── streamlit_app.py                 # Chat UI (TM1)
+├── .streamlit/config.toml           # Theme: light + dark palettes (TM1)
+├── assets/favicon.svg               # Brand mark, local so it works offline
 ├── requirements.txt                 # Pinned dependencies
 ├── pyproject.toml                   # Package metadata + pytest config
 ├── .env.example                     # Annotated configuration
@@ -141,6 +156,7 @@ table take over, and the UI shows which path was used.
 │   ├── actions.py                   # The only module that writes (TM4)
 │   ├── config.py                    # Environment-driven settings
 │   ├── llm.py                       # Model factory (Google AI / Gemini)
+│   ├── memory.py                    # Conversation memory + history (TM1)
 │   ├── observability.py             # LangSmith tracing + run config
 │   ├── prompts.py                   # Every system prompt, versioned
 │   ├── agents/
@@ -155,6 +171,10 @@ table take over, and the UI shows which path was used.
 │   │   ├── incident.py              # 6 tools (TM1)
 │   │   ├── recovery.py              # 6 tools (TM4)
 │   │   └── common.py                # JSON / error conventions
+│   ├── ui/
+│   │   ├── theme.py                 # Stylesheet + shipment components (TM1)
+│   │   ├── overview.py              # Read-only network snapshot (TM1)
+│   │   └── visuals.py               # Charts behind each answer (TM1)
 │   └── data/
 │       ├── access.py                # JSON fixtures or mock REST API
 │       ├── mock/*.json              # Committed dataset (seeded, reproducible)
@@ -163,14 +183,20 @@ table take over, and the UI shows which path was used.
 │   ├── generate_mock_data.py        # Regenerate the dataset
 │   ├── smoke_test.py                # Pre-flight check, no API key needed
 │   └── run_eval_conversations.py    # 12 traced conversations + latency stats
-├── tests/                           # 150 tests, none need an API key
+├── tests/                           # 317 tests, none need an API key
 │   ├── test_data_access.py          # Fixtures, relationships, runtime writes
-│   ├── test_tools.py                # All 33 tools, exact numbers
+│   ├── test_tools.py                # All 34 tools, exact numbers
 │   ├── test_graph.py                # Routing, loop guard, HITL, actions
 │   ├── test_shipment_agent.py       # Shipment Agent behaviour (fake LLM)
+│   ├── test_intake.py               # Normalisation, validation, entity memory
+│   ├── test_memory.py               # Conversation memory + history, both back ends
+│   ├── test_prompts.py              # Prompt versioning reaches LangSmith
 │   ├── test_config_llm.py           # Google AI wiring, reasoning effort
 │   ├── test_gemini_schemas.py       # Tool schemas convert for Gemini
-│   └── test_ui.py                   # Streamlit AppTest chat flow
+│   ├── test_ui.py                   # Streamlit AppTest chat flow
+│   ├── test_ui_theme.py             # KPI strip agrees with the tools, escaping
+│   ├── test_ui_visuals.py           # Panel dispatch, lane geometry, tool parity
+│   └── test_live_agents.py          # Opt-in: real Gemini calls (--live)
 └── docs/
     ├── architecture.md              # Architecture + diagram
     ├── team-responsibilities.md     # Who owns what
@@ -204,13 +230,27 @@ a `{"data": [...]}` envelope). No tool code changes.
 ## Testing
 
 ```bash
-pytest                        # 150 tests
+pytest                        # 269 tests
 python scripts/smoke_test.py  # data + every tool + graph compile
 ```
 
 Neither needs an API key — tools are deterministic and the graph builds agents
 lazily. That is deliberate: it keeps CI cheap and isolates data bugs from model
-behaviour.
+behaviour. `tests/conftest.py` enforces it: even with a real key in `.env`, the
+suite removes it and pins conversation memory to the in-process back end, so a
+test run never calls the API or touches your real conversation history.
+
+To check the model path itself — before a demo, or after changing a prompt or
+the model:
+
+```bash
+pytest tests/test_live_agents.py --live
+```
+
+Eight tests, real Gemini calls, ~15s: intake extraction and normalisation,
+unsupported-request and missing-information handling, reference resolution from
+conversation memory, and that the Incident Analysis Agent uses the severity rule
+engine and the duplicate check rather than judging for itself.
 
 `test_gemini_schemas.py` is worth knowing about: `bind_tools` converts tool
 schemas *lazily*, so a tool signature Gemini cannot express would otherwise only
@@ -227,6 +267,15 @@ python scripts/run_eval_conversations.py
 Runs 12 conversations (14 turns) covering every functional requirement plus the
 unsupported-request and missing-information cases, each on its own thread and
 tagged `eval`. Prints latency statistics and writes `docs/eval_runs.json`.
+
+On a **free-tier** Gemini key (15 requests/minute) a full run will hit the
+quota — one multi-agent turn is several requests. The harness retries quota
+errors automatically; add `--pace 20` to space turns out and let the whole set
+through:
+
+```bash
+python scripts/run_eval_conversations.py --pace 20
+```
 
 Filter in LangSmith with `tag:eval`. Write-up template:
 [`docs/langsmith-report.md`](docs/langsmith-report.md).

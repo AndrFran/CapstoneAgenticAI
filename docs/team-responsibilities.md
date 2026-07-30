@@ -5,22 +5,81 @@ owns, so two people editing at once do not collide.
 
 ## Team Member 1 — Request Intake & Incident Analysis Agent Engineer
 
+**Status: delivered** (branch `feat/tm1-intake-incident-agents`).
+
 **Owns**
 
 | File | What is yours |
 |---|---|
-| `streamlit_app.py` | Chat UI, conversation history, approval panel, trace view. |
-| `src/supplychain/agents/intake.py` | Request Intake Agent + regex fallback. |
+| `streamlit_app.py` | Chat UI, conversation browser, approval panel, trace view. |
+| `src/supplychain/agents/intake.py` | Request Intake Agent: extraction, normalisation, validation, entity memory. |
+| `src/supplychain/memory.py` | Conversation memory (checkpointer) and history (conversation index). |
 | `src/supplychain/tools/incident.py` | Incident analysis tools + severity rules. |
-| `src/supplychain/prompts.py` | `SHARED_CONTEXT`, `INTAKE_PROMPT`, `INCIDENT_ANALYSIS_PROMPT`. |
+| `src/supplychain/prompts.py` | `SHARED_CONTEXT`, `INTAKE_PROMPT`, `INCIDENT_ANALYSIS_PROMPT`, and the versioning/changelog machinery. |
+| `tests/test_intake.py`, `tests/test_memory.py`, `tests/test_prompts.py`, `tests/test_ui.py`, `tests/test_live_agents.py` | Your tests. |
 
 **Brief coverage:** Chat UI · prompt engineering · conversation memory ·
 conversation history · system prompt · Request Intake Agent · Incident Analysis
 Agent.
 
-Conversation memory is the graph's checkpointer keyed by `thread_id` — you do
-not manage a message list yourself. `runner.conversation_messages(thread_id)`
-rehydrates history if you need it.
+### What was built
+
+**Request Intake Agent** — four stages, only one of which is the model:
+
+1. The LLM classifies the request and summarises intent.
+2. Deterministic extraction and normalisation: `shp 2026 2`, `SHP_2026_02` and
+   `shipment SHP/2026/0002` all become `SHP-2026-0002`. Seven identifier kinds,
+   plus quantity extraction that ignores digits belonging to ids and years.
+3. Validation against the data layer: an id that does not exist becomes
+   `missing_information` with close-match suggestions ("did you mean…") instead
+   of reaching an agent and failing there.
+4. Entity memory carry-forward, so "that shipment" resolves from what the
+   conversation already mentioned.
+
+The model's identifiers and the regex's are unioned, then re-normalised and
+validated — the model sometimes paraphrases an id, the regex never invents one.
+
+**Incident Analysis Agent** — added `find_related_incidents` for duplicate
+detection (an open incident on the same shipment is a duplicate, not a new
+problem), and extended the severity rules with downstream order exposure:
+at-risk order value over $100k scores high, 3+ orders at risk or 5+ stores
+exposed scores medium. Severity stays rule-based, not model judgement.
+
+**Conversation memory and history** — `memory.py`. Memory is the checkpointer;
+history is a `conversations` index so the UI can list, reopen, rename and delete
+past conversations. SQLite by default, so both survive a restart. Entity memory
+lives in state as `conversation_entities` and is the one field not reset per
+turn.
+
+**Prompt engineering** — every prompt now carries a version, with a `CHANGELOG`
+recording why it changed. `observability.run_config` attaches all versions to
+every LangSmith run, so two prompt versions can be compared in the UI. Intake
+went to v2 with five worked examples; incident analysis went to v2 with the
+duplicate check and an explicit no-writes boundary.
+
+**Chat UI** — conversation browser with severity badges, per-turn intake panel
+(what was understood, what was carried forward from memory, unknown ids with
+suggestions, any clarification needed), workflow trace, markdown export, rename
+and delete. Reopening a past conversation restores its trace metadata, not just
+the text, because each turn's route/severity/intake summary is persisted
+alongside the checkpoint.
+
+**Testing** — 246 hermetic tests plus 8 opt-in live ones
+(`pytest tests/test_live_agents.py --live`) that verify the model path: intake
+really uses the model and normalises sloppy ids, unsupported and
+under-specified requests are handled, references resolve from memory, and the
+Incident Analysis Agent calls the severity rule engine and the duplicate check
+instead of judging for itself.
+
+### Notes for whoever picks this up
+
+- Conversation memory is the checkpointer keyed by `thread_id` — do not manage a
+  message list yourself. `runner.conversation_turns(thread_id)` rehydrates the
+  UI; `runner.export_conversation(thread_id)` renders markdown.
+- Starting a new conversation is just a new `thread_id`. Do **not** call
+  `runner.reset_graph()` for that — it tears down the memory back end.
+- Adding a new identifier kind means one entry in `intake.IDENTIFIER_SPECS`,
+  one field on `state.IntakeResult`, and one name in `memory.ENTITY_FIELDS`.
 
 ## Team Member 2 — Shipment & Order Impact Agent Engineer
 
