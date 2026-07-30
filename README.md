@@ -63,6 +63,9 @@ annotated list.
 | `SUPPLYCHAIN_API_BASE_URL` | — | Blank reads the JSON fixtures; set it to use the mock REST API instead. |
 | `SUPPLYCHAIN_MAX_HOPS` | `8` | Supervisor loop guard. |
 | `SUPPLYCHAIN_REQUIRE_APPROVAL` | `true` | Human-in-the-loop gate on write actions. |
+| `SUPPLYCHAIN_MEMORY_BACKEND` | `sqlite` | `sqlite` persists conversations across restarts; `memory` is in-process only. |
+| `SUPPLYCHAIN_MEMORY_PATH` | `.supplychain/conversations.sqlite` | Where conversation memory and history live. |
+| `SUPPLYCHAIN_ENTITY_MEMORY_DEPTH` | `3` | Identifiers of each kind a conversation remembers. |
 
 ## What it can do
 
@@ -86,6 +89,16 @@ escalate a critical incident (with approval).
 **Recovery planning** — ranked recovery options from the live position · cost of
 the option against the cost of inaction · reroute a shipment (with approval) ·
 stakeholder summary.
+
+**Understanding the request** — operations staff do not type canonical ids, so
+`shp 2026 2`, `SHP_2026_02` and `shipment SHP/2026/0002` all resolve to
+`SHP-2026-0002`. An id that does not exist comes back with close matches ("did
+you mean SHP-2026-0020?") rather than failing inside an agent.
+
+**Conversation memory** — follow-up questions work: ask about a shipment, then
+"who's the supplier on that one?" and "what would it cost to source the same
+SKUs elsewhere?" without repeating an identifier. Conversations persist across
+restarts and can be reopened, renamed, exported or deleted from the sidebar.
 
 Try the sample prompts in the sidebar, or:
 
@@ -141,6 +154,7 @@ table take over, and the UI shows which path was used.
 │   ├── actions.py                   # The only module that writes (TM4)
 │   ├── config.py                    # Environment-driven settings
 │   ├── llm.py                       # Model factory (Google AI / Gemini)
+│   ├── memory.py                    # Conversation memory + history (TM1)
 │   ├── observability.py             # LangSmith tracing + run config
 │   ├── prompts.py                   # Every system prompt, versioned
 │   ├── agents/
@@ -163,11 +177,14 @@ table take over, and the UI shows which path was used.
 │   ├── generate_mock_data.py        # Regenerate the dataset
 │   ├── smoke_test.py                # Pre-flight check, no API key needed
 │   └── run_eval_conversations.py    # 12 traced conversations + latency stats
-├── tests/                           # 150 tests, none need an API key
+├── tests/                           # 240 tests, none need an API key
 │   ├── test_data_access.py          # Fixtures, relationships, runtime writes
-│   ├── test_tools.py                # All 33 tools, exact numbers
+│   ├── test_tools.py                # All 34 tools, exact numbers
 │   ├── test_graph.py                # Routing, loop guard, HITL, actions
 │   ├── test_shipment_agent.py       # Shipment Agent behaviour (fake LLM)
+│   ├── test_intake.py               # Normalisation, validation, entity memory
+│   ├── test_memory.py               # Conversation memory + history, both back ends
+│   ├── test_prompts.py              # Prompt versioning reaches LangSmith
 │   ├── test_config_llm.py           # Google AI wiring, reasoning effort
 │   ├── test_gemini_schemas.py       # Tool schemas convert for Gemini
 │   └── test_ui.py                   # Streamlit AppTest chat flow
@@ -204,13 +221,15 @@ a `{"data": [...]}` envelope). No tool code changes.
 ## Testing
 
 ```bash
-pytest                        # 150 tests
+pytest                        # 240 tests
 python scripts/smoke_test.py  # data + every tool + graph compile
 ```
 
 Neither needs an API key — tools are deterministic and the graph builds agents
 lazily. That is deliberate: it keeps CI cheap and isolates data bugs from model
-behaviour.
+behaviour. `tests/conftest.py` enforces it: even with a real key in `.env`, the
+suite removes it and pins conversation memory to the in-process back end, so a
+test run never calls the API or touches your real conversation history.
 
 `test_gemini_schemas.py` is worth knowing about: `bind_tools` converts tool
 schemas *lazily*, so a tool signature Gemini cannot express would otherwise only

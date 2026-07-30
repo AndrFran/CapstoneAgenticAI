@@ -18,7 +18,7 @@ A `.venv` exists at the repo root. On Windows PowerShell, prefix with
 `.\.venv\Scripts\python.exe -m` if it is not activated.
 
 ```bash
-pytest                                   # 150 tests, no API key needed
+pytest                                   # 240 tests, no API key needed
 pytest tests/test_tools.py               # one file
 pytest tests/test_tools.py::test_track_shipment_returns_full_record
 pytest -k "severity or transfer"         # by name
@@ -92,6 +92,17 @@ self-correct. Raising instead aborts the agent loop.
 clock.** The fixtures are generated around that date; using `date.today()` makes
 ETAs and delays nonsensical.
 
+**8. `conversation_entities` is the one state field that must NOT be reset per
+turn.** It is the entity memory that makes "that shipment" resolve on turn 3.
+Everything else in `intake_node`'s reset block is per-turn; this one is not.
+
+**9. The test suite is hermetic and must stay that way.** `tests/conftest.py`
+has two autouse fixtures that delete `GOOGLE_API_KEY`/`GEMINI_API_KEY` and pin
+`SUPPLYCHAIN_MEMORY_BACKEND=memory`. Without them a developer with a real key in
+`.env` would have the suite make live Gemini calls (slow, costly,
+non-deterministic) and write to their real conversation history. A test that
+needs a model object sets the key itself — see `tests/test_config_llm.py`.
+
 ## Architecture
 
 ```
@@ -128,10 +139,37 @@ token cost predictable.
 | `actions.py` | The only module that writes. Called only by the approval node. |
 | `llm.py` | The only module that names a provider (`init_chat_model` + `MODEL_PROVIDER = "google_genai"`). |
 | `config.py` | The only module that reads `os.environ`. |
-| `prompts.py` | Every system prompt, so they can be diffed and A/B tested against traces. |
+| `prompts.py` | Every system prompt, plus `PROMPT_VERSIONS` and `CHANGELOG`. Bump the version in the same commit as a prompt change — `observability.run_config` ships versions to LangSmith so runs can be compared. |
+| `memory.py` | Conversation memory (the checkpointer) and history (the conversation index). The only module that knows a checkpointer exists. |
 
-`runner.py` (`run_turn` / `resume_turn` / `health`) is the API the UI and
-scripts use — do not have callers touch the graph or checkpointer directly.
+`runner.py` (`run_turn` / `resume_turn` / `health`, plus the conversation
+history helpers) is the API the UI and scripts use — do not have callers touch
+the graph, the checkpointer or the store directly.
+
+**Intake is four stages, only one of which is the model** (`agents/intake.py`).
+The LLM classifies and summarises intent; around it sit deterministic
+extraction + normalisation (`shp 2026 2` → `SHP-2026-0002`), validation against
+the data layer (an unknown id becomes `missing_information` with close-match
+suggestions rather than reaching an agent), and entity memory carry-forward.
+`analyse_request` returns an `IntakeOutcome` and never raises.
+
+## Conversation memory and history
+
+Two different things, both in `memory.py`:
+
+- **Memory** — the LangGraph checkpointer, keyed by `thread_id`. Holds messages
+  and workflow state; it is also what makes the approval `interrupt()`
+  resumable.
+- **History** — a `conversations` table indexing which threads exist, with
+  title/turns/last severity. LangGraph checkpointers have no notion of "which
+  threads exist", so the UI's conversation list needs this index.
+
+Default back end is SQLite at `.supplychain/conversations.sqlite` (git-ignored),
+so both survive a restart; `SUPPLYCHAIN_MEMORY_BACKEND=memory` is in-process
+only. A failure to open the database degrades to in-process rather than taking
+the app down. Deleting a conversation drops its checkpoint rows too, by
+discovering tables with a `thread_id` column rather than hard-coding LangGraph's
+schema.
 
 ## Data layer
 
@@ -160,6 +198,10 @@ All environment-driven via `config.Settings`; see `.env.example`. Notable:
   (`low`) — map to Gemini's `thinking_level`. Invalid values fall back to the
   default rather than failing at request time.
 - `SUPPLYCHAIN_REQUIRE_APPROVAL` — set `false` only for unattended demos.
+- `SUPPLYCHAIN_MEMORY_BACKEND` (`sqlite` | `memory`) and
+  `SUPPLYCHAIN_MEMORY_PATH` — conversation memory and history.
+- `SUPPLYCHAIN_ENTITY_MEMORY_DEPTH` (`3`) — how many identifiers of each kind
+  the conversation remembers.
 
 Temperature is deliberately never set (Google recommends leaving Gemini 3.x at
 default sampling and controlling depth with reasoning effort).
