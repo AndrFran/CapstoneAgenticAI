@@ -362,7 +362,7 @@ PROMPT_VERSIONS = {
     "shared_context": "v2",
     "intake": "v2",
     "incident_analysis": "v2",
-    "shipment": "v1",
+    "shipment": "v2",
     "inventory": "v1",
     "supplier": "v1",
     "recovery": "v1",
@@ -392,6 +392,15 @@ CHANGELOG = {
     "shared_context": [
         ("v1", "Initial client context and ground rules."),
         ("v2", "Added route ids to the identifier conventions."),
+    ],
+    "shipment": [
+        ("v1", "Initial: tracking, delay, affected orders, route checks."),
+        (
+            "v2",
+            "Added get_order_details and find_orders_by_store, plus a tool-economy "
+            "rule, after traces showed the agent following track_shipment with a "
+            "redundant get_shipment_status call. (TM2, from trace insights.)",
+        ),
     ],
 }
 

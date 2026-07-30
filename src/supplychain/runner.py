@@ -313,6 +313,10 @@ def health() -> dict[str, Any]:
     return {
         "llm_configured": settings.llm_configured,
         "provider": "google_genai",
+        # Two credential paths: an AI Studio API key, or the Vertex AI backend
+        # with gcloud ADC. Worth surfacing - a demo that silently used the wrong
+        # one is hard to debug from the UI.
+        "auth_mode": "vertex_ai" if settings.use_vertexai else "api_key",
         "model": settings.model,
         "reasoning_effort": settings.reasoning_effort,
         "router_reasoning_effort": settings.router_reasoning_effort,

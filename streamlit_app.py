@@ -270,13 +270,19 @@ def render_approval_gate() -> None:
 
 def render_status(status: dict) -> None:
     if status["llm_configured"]:
+        auth = (
+            "Vertex AI" if status["auth_mode"] == "vertex_ai" else "AI Studio key"
+        )
         st.success(
-            f"Google AI: `{status['model']}` (reasoning: {status['reasoning_effort']})"
+            f"Google AI: `{status['model']}` via {auth} "
+            f"(reasoning: {status['reasoning_effort']})"
         )
     else:
         st.error(
-            "GOOGLE_API_KEY is not set. Copy `.env.example` to `.env` and add a "
-            "Google AI Studio key, then restart."
+            "No Google AI credentials. Copy `.env.example` to `.env` and either "
+            "set `GOOGLE_API_KEY`, or set `GOOGLE_GENAI_USE_VERTEXAI=true` with "
+            "`GOOGLE_CLOUD_PROJECT` and run `gcloud auth application-default "
+            "login`. Then restart."
         )
 
     tracing = tracing_status()
@@ -423,8 +429,9 @@ def main() -> None:
             {
                 "role": "assistant",
                 "content": (
-                    "I can't run without a Google AI API key. Add "
-                    "`GOOGLE_API_KEY` to `.env` and restart the app."
+                    "I can't run without Google AI credentials. Add "
+                    "`GOOGLE_API_KEY` to `.env` — or configure Vertex AI — and "
+                    "restart the app."
                 ),
                 "meta": {},
             }

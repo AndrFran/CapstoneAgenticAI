@@ -177,7 +177,7 @@ table take over, and the UI shows which path was used.
 │   ├── generate_mock_data.py        # Regenerate the dataset
 │   ├── smoke_test.py                # Pre-flight check, no API key needed
 │   └── run_eval_conversations.py    # 12 traced conversations + latency stats
-├── tests/                           # 246 tests, none need an API key
+├── tests/                           # 269 tests, none need an API key
 │   ├── test_data_access.py          # Fixtures, relationships, runtime writes
 │   ├── test_tools.py                # All 34 tools, exact numbers
 │   ├── test_graph.py                # Routing, loop guard, HITL, actions
@@ -222,7 +222,7 @@ a `{"data": [...]}` envelope). No tool code changes.
 ## Testing
 
 ```bash
-pytest                        # 246 tests
+pytest                        # 269 tests
 python scripts/smoke_test.py  # data + every tool + graph compile
 ```
 

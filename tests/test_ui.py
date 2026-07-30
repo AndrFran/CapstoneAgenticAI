@@ -17,22 +17,14 @@ AppTest = pytest.importorskip("streamlit.testing.v1").AppTest
 
 
 @pytest.fixture
-def no_api_key(monkeypatch):
-    """Run the app as if no Google AI key were configured.
+def no_api_key():
+    """Run the app as if no Google AI credentials were configured.
 
-    Settings are cached, so deleting the variables is not enough - the snapshot
-    has to be rebuilt and the model cache cleared. This keeps the test honest on
-    a developer machine that does have a key exported.
+    conftest's autouse `no_llm_credentials` fixture already strips every
+    credential variable (API key and Vertex AI alike) and rebuilds the cached
+    settings, so this is just a readable name for that state at the call site.
     """
-    from supplychain import config, llm
-
-    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    config.reload_settings()
-    llm.reset_llm_cache()
     yield
-    config.reload_settings()
-    llm.reset_llm_cache()
 
 
 def fresh_app():

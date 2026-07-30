@@ -228,3 +228,37 @@ def test_an_unwritable_memory_path_degrades_instead_of_crashing(monkeypatch, tmp
 def test_invalid_backend_falls_back_to_the_default(monkeypatch):
     monkeypatch.setenv("SUPPLYCHAIN_MEMORY_BACKEND", "postgres")
     assert config.reload_settings().memory_backend == "sqlite"
+
+
+# ---------------------------------------------------------------------------
+# health() reporting
+# ---------------------------------------------------------------------------
+
+
+def test_health_reports_the_memory_backend_and_conversation_count():
+    from supplychain.runner import health
+
+    store = memory.get_store()
+    store.upsert("t1", title="One")
+    store.upsert("t2", title="Two")
+
+    status = health()
+    assert status["memory_backend"] == "memory"
+    assert status["conversations_stored"] == 2
+
+
+def test_health_reports_which_credential_path_is_configured(monkeypatch):
+    """Two auth paths exist after the TM2 merge; the UI has to say which is live."""
+    from supplychain.runner import health
+
+    monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+    config.reload_settings()
+    assert health()["auth_mode"] == "api_key"
+
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.setenv("GOOGLE_GENAI_USE_VERTEXAI", "true")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "test-project")
+    config.reload_settings()
+    status = health()
+    assert status["auth_mode"] == "vertex_ai"
+    assert status["llm_configured"] is True  # no API key needed on Vertex

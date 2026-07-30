@@ -18,7 +18,7 @@ A `.venv` exists at the repo root. On Windows PowerShell, prefix with
 `.\.venv\Scripts\python.exe -m` if it is not activated.
 
 ```bash
-pytest                                   # 246 tests, no API key needed
+pytest                                   # 269 tests, no API key needed
 pytest tests/test_tools.py               # one file
 pytest tests/test_tools.py::test_track_shipment_returns_full_record
 pytest -k "severity or transfer"         # by name
