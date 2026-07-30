@@ -144,6 +144,8 @@ table take over, and the UI shows which path was used.
 ```
 .
 ├── streamlit_app.py                 # Chat UI (TM1)
+├── .streamlit/config.toml           # Theme: light + dark palettes (TM1)
+├── assets/favicon.svg               # Brand mark, local so it works offline
 ├── requirements.txt                 # Pinned dependencies
 ├── pyproject.toml                   # Package metadata + pytest config
 ├── .env.example                     # Annotated configuration
@@ -169,6 +171,10 @@ table take over, and the UI shows which path was used.
 │   │   ├── incident.py              # 6 tools (TM1)
 │   │   ├── recovery.py              # 6 tools (TM4)
 │   │   └── common.py                # JSON / error conventions
+│   ├── ui/
+│   │   ├── theme.py                 # Stylesheet + shipment components (TM1)
+│   │   ├── overview.py              # Read-only network snapshot (TM1)
+│   │   └── visuals.py               # Charts behind each answer (TM1)
 │   └── data/
 │       ├── access.py                # JSON fixtures or mock REST API
 │       ├── mock/*.json              # Committed dataset (seeded, reproducible)
@@ -177,7 +183,7 @@ table take over, and the UI shows which path was used.
 │   ├── generate_mock_data.py        # Regenerate the dataset
 │   ├── smoke_test.py                # Pre-flight check, no API key needed
 │   └── run_eval_conversations.py    # 12 traced conversations + latency stats
-├── tests/                           # 269 tests, none need an API key
+├── tests/                           # 317 tests, none need an API key
 │   ├── test_data_access.py          # Fixtures, relationships, runtime writes
 │   ├── test_tools.py                # All 34 tools, exact numbers
 │   ├── test_graph.py                # Routing, loop guard, HITL, actions
@@ -188,6 +194,8 @@ table take over, and the UI shows which path was used.
 │   ├── test_config_llm.py           # Google AI wiring, reasoning effort
 │   ├── test_gemini_schemas.py       # Tool schemas convert for Gemini
 │   ├── test_ui.py                   # Streamlit AppTest chat flow
+│   ├── test_ui_theme.py             # KPI strip agrees with the tools, escaping
+│   ├── test_ui_visuals.py           # Panel dispatch, lane geometry, tool parity
 │   └── test_live_agents.py          # Opt-in: real Gemini calls (--live)
 └── docs/
     ├── architecture.md              # Architecture + diagram

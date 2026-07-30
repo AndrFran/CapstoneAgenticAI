@@ -18,14 +18,14 @@ A `.venv` exists at the repo root. On Windows PowerShell, prefix with
 `.\.venv\Scripts\python.exe -m` if it is not activated.
 
 ```bash
-pytest                                   # 269 tests, no API key needed
+pytest                                   # 317 tests, no API key needed
 pytest tests/test_tools.py               # one file
 pytest tests/test_tools.py::test_track_shipment_returns_full_record
 pytest -k "severity or transfer"         # by name
 pytest -o addopts="" --tb=short          # pyproject sets -q; this restores the summary line
 pytest tests/test_live_agents.py --live  # 8 real Gemini calls; needs GOOGLE_API_KEY
 
-python scripts/smoke_test.py             # data + all 33 tools + graph compile, no API key
+python scripts/smoke_test.py             # data + all 34 tools + graph compile, no API key
 python scripts/generate_mock_data.py     # regenerate the committed JSON fixtures
 python scripts/run_eval_conversations.py # 12 traced conversations + latency stats (needs keys)
 python scripts/run_eval_conversations.py --case delay_impact   # one case
@@ -82,7 +82,7 @@ terminating.
 Scalars and lists of scalars only (`str`, `int`, `float`, `bool`, `list[str]`,
 and their `| None` forms). `bind_tools` converts **lazily**, so a bad signature
 would only fail on the first live request —
-`tests/test_gemini_schemas.py` converts all 33 tools up front and enforces the
+`tests/test_gemini_schemas.py` converts all 34 tools up front and enforces the
 allowlist. Nested containers and dict params will fail that test.
 
 **6. Tool failures are data, never exceptions.** Every tool returns a JSON
@@ -147,6 +147,7 @@ token cost predictable.
 | `config.py` | The only module that reads `os.environ`. |
 | `prompts.py` | Every system prompt, plus `PROMPT_VERSIONS` and `CHANGELOG`. Bump the version in the same commit as a prompt change — `observability.run_config` ships versions to LangSmith so runs can be compared. |
 | `memory.py` | Conversation memory (the checkpointer) and history (the conversation index). The only module that knows a checkpointer exists. |
+| `ui/` | Presentation only. `theme.py` takes plain data and returns HTML; `overview.py` and `visuals.py` read through `access.py` and the tool layer to rebuild the numbers a panel needs. Nothing in `ui/` imports the graph or the model. |
 
 `runner.py` (`run_turn` / `resume_turn` / `health`, plus the conversation
 history helpers) is the API the UI and scripts use — do not have callers touch
@@ -182,6 +183,75 @@ only. A failure to open the database degrades to in-process rather than taking
 the app down. Deleting a conversation drops its checkpoint rows too, by
 discovering tables with a `thread_id` column rather than hard-coding LangGraph's
 schema.
+
+## Look and feel
+
+The "freight console" theme is two files: `.streamlit/config.toml` holds the
+palette (light *and* dark, with the sidebar dark in both — it is the brand
+rail), and `src/supplychain/ui/theme.py` holds the stylesheet and the
+shipment-themed components. Four things about it are easy to break by accident:
+
+0. **Icons are Material Symbols, never emoji.** Streamlit self-hosts the
+   "Material Symbols Rounded" variable font for its own widget icons, so it is
+   already loaded, costs no request and works offline. `theme.icon("route")`
+   renders one by ligature; Streamlit's own widgets take the same set as
+   `icon=":material/route:"`. Emoji render differently on every platform, sit
+   at the wrong baseline and cannot take the theme colour.
+   `test_ui_theme.py::test_no_emoji_anywhere_in_the_presentation_layer` fails
+   the build if one comes back. The one exception is `page_icon`, which is a
+   local SVG in `assets/` — `page_icon=":material/...:"` resolves to a
+   `fonts.gstatic.com` URL, which would be the app's only external request.
+1. **Custom surfaces are mixed from `currentColor`, never hard-coded.**
+   Streamlit uses CSS-in-JS and puts no `data-theme` attribute on the app root,
+   so there is no selector that means "light mode". A literal `#fff` panel
+   looks right in one theme and is unreadable in the other; `color-mix(in srgb,
+   currentColor 4%, transparent)` is correct in both.
+2. **Warm colours mean severity.** Red/orange/yellow/green are reserved for how
+   bad the incident is, which is why the accent is cool blue. Accent *text*
+   uses `--nr-accent-text` (the accent pulled toward the text colour), because
+   the raw accent only clears 4.5:1 on the dark background.
+3. **Per-widget CSS hooks are `.st-key-<key>`**, generated from the widget's
+   `key`. Renaming a `key` in `streamlit_app.py` silently drops its styling —
+   the sample prompts, the delete buttons, the hero and the approval gate all
+   depend on this.
+4. **`ui/overview.py` imports `DELAY_STATUSES` from `tools/shipment.py`**
+   rather than restating it, so the KPI strip cannot disagree with
+   `identify_delayed_shipments`. `test_ui_theme.py` pins that.
+5. **No raw JSON reaches the user.** `theme.kv_grid` renders payloads as a
+   labelled grid, including the approval gate's. `st.json` shows braces, quotes
+   and key order — it is a debugging widget, and an operator approving a write
+   should be reading a form.
+
+`tests/test_ui.py` asserts on specific elements — the `st.title` text, an
+`st.error` naming `GOOGLE_API_KEY`, an `st.info` naming the data source, the
+`Memory:` caption and the sample-prompt button labels. Restyle those, but do
+not replace them with raw HTML.
+
+## Visualised answers
+
+`ui/visuals.py` draws the numbers behind an answer under the answer: a shipment
+lane, stock cover by warehouse, the delay backlog, supplier options. Three
+things about it are load-bearing.
+
+**The numbers are recomputed from the tool layer, never read out of the
+model's prose.** Asking the model for chart data, or regexing figures out of
+the answer, puts hallucinated numbers on something that looks authoritative.
+The tools are deterministic Python over the same fixtures, so recomputing costs
+microseconds and cannot disagree. `test_ui_visuals.py` pins the panels against
+`check_inventory` and `identify_delayed_shipments` directly. The trade-off is
+that a panel shows the data *now* — after an approved reroute the lane moves
+and the prose above it does not.
+
+**Which panel appears is driven by `findings[agent]["tool_calls"]`**, so a
+panel mirrors work an agent actually did rather than keywords in the question.
+This is also the only rich thing available: `graph._worker_node` deliberately
+stores tool *names* and drops `tool_results`, which keeps the checkpoint and
+the `conversation_turns` meta blob small. Widening state to carry raw tool
+output would make panels exact-at-answer-time at the cost of both.
+
+**Recomputing is what makes old conversations visualise.** A conversation
+recorded before this existed still draws panels, because the persisted
+`request` entities are all the dispatcher needs.
 
 ## Data layer
 

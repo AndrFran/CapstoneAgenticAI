@@ -1,0 +1,162 @@
+# NovaRetail Ops Assistant - the "freight console" theme.
+#
+# Owner: Team Member 1 (chat UI). Two rules this file encodes, both of which
+# the app depends on:
+#
+#   1. The accent is deliberately cool (sky blue). Warm colours mean something
+#      here - red/orange/yellow/green are incident severity - so they are never
+#      spent on decoration. Anything that is merely "the brand" is blue.
+#   2. Light and dark are both defined, so the in-app theme toggle works. The
+#      sidebar stays dark navy in *both*, because it is the brand rail; that is
+#      why the sidebar sections repeat the dark alert palette.
+#
+# Everything else lives in src/supplychain/ui/theme.py as CSS.
+
+[theme]
+base = "dark"
+font = "Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif"
+headingFont = "Inter, 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif"
+codeFont = "'JetBrains Mono', 'Cascadia Code', ui-monospace, Consolas, monospace"
+baseFontSize = 15
+baseRadius = "0.7rem"
+buttonRadius = "0.6rem"
+showWidgetBorder = true
+showSidebarBorder = false
+linkUnderline = false
+chartCategoricalColors = [
+    "#38BDF8", "#34D399", "#FBBF24", "#F87171",
+    "#A78BFA", "#22D3EE", "#FB923C", "#94A3B8",
+]
+
+# ---------------------------------------------------------------------------
+# Dark - the default. A night ops console.
+# ---------------------------------------------------------------------------
+
+[theme.dark]
+backgroundColor = "#080D16"
+secondaryBackgroundColor = "#101A29"
+textColor = "#E7EEF8"
+primaryColor = "#38BDF8"
+borderColor = "#1D2A3D"
+linkColor = "#7DD3FC"
+codeBackgroundColor = "#0C1522"
+codeTextColor = "#7DE3F5"
+dataframeBorderColor = "#1D2A3D"
+dataframeHeaderBackgroundColor = "#101A29"
+greenColor = "#34D399"
+greenBackgroundColor = "#0E2A22"
+greenTextColor = "#6EE7B7"
+blueColor = "#60A5FA"
+blueBackgroundColor = "#0E1E36"
+blueTextColor = "#93C5FD"
+yellowColor = "#FACC15"
+yellowBackgroundColor = "#2C2410"
+yellowTextColor = "#FDE047"
+orangeColor = "#FB923C"
+orangeBackgroundColor = "#2E1C0E"
+orangeTextColor = "#FDBA74"
+redColor = "#F87171"
+redBackgroundColor = "#2E1418"
+redTextColor = "#FCA5A5"
+violetColor = "#A78BFA"
+violetBackgroundColor = "#1C1733"
+violetTextColor = "#C4B5FD"
+grayColor = "#94A3B8"
+grayBackgroundColor = "#16202F"
+grayTextColor = "#94A3B8"
+
+[theme.dark.sidebar]
+backgroundColor = "#060A12"
+secondaryBackgroundColor = "#0F1826"
+textColor = "#DCE6F5"
+primaryColor = "#38BDF8"
+borderColor = "#1B2739"
+linkColor = "#7DD3FC"
+codeBackgroundColor = "#0C1522"
+codeTextColor = "#7DE3F5"
+greenColor = "#34D399"
+greenBackgroundColor = "#0E2A22"
+greenTextColor = "#6EE7B7"
+blueColor = "#60A5FA"
+blueBackgroundColor = "#0E1E36"
+blueTextColor = "#93C5FD"
+yellowColor = "#FACC15"
+yellowBackgroundColor = "#2C2410"
+yellowTextColor = "#FDE047"
+orangeColor = "#FB923C"
+orangeBackgroundColor = "#2E1C0E"
+orangeTextColor = "#FDBA74"
+redColor = "#F87171"
+redBackgroundColor = "#2E1418"
+redTextColor = "#FCA5A5"
+grayColor = "#8FA3BC"
+grayBackgroundColor = "#131D2B"
+grayTextColor = "#8FA3BC"
+
+# ---------------------------------------------------------------------------
+# Light - same brand, daylight. The sidebar stays dark on purpose.
+# ---------------------------------------------------------------------------
+
+[theme.light]
+backgroundColor = "#F6F9FD"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#0F1A2A"
+primaryColor = "#1173D4"
+borderColor = "#DFE7F1"
+linkColor = "#0B5FB0"
+codeBackgroundColor = "#EEF3FA"
+codeTextColor = "#0B4A8F"
+dataframeBorderColor = "#DFE7F1"
+dataframeHeaderBackgroundColor = "#EEF3FA"
+greenColor = "#059669"
+greenBackgroundColor = "#E7F7F0"
+greenTextColor = "#065F46"
+blueColor = "#1173D4"
+blueBackgroundColor = "#E8F1FD"
+blueTextColor = "#0B4A8F"
+yellowColor = "#CA8A04"
+yellowBackgroundColor = "#FDF6E3"
+yellowTextColor = "#854D0E"
+orangeColor = "#EA580C"
+orangeBackgroundColor = "#FDEEE5"
+orangeTextColor = "#9A3412"
+redColor = "#DC2626"
+redBackgroundColor = "#FDECEC"
+redTextColor = "#991B1B"
+violetColor = "#7C3AED"
+violetBackgroundColor = "#F1ECFE"
+violetTextColor = "#5B21B6"
+grayColor = "#64748B"
+grayBackgroundColor = "#F1F5F9"
+grayTextColor = "#475569"
+
+[theme.light.sidebar]
+backgroundColor = "#0A1220"
+secondaryBackgroundColor = "#131F32"
+textColor = "#DCE6F5"
+primaryColor = "#38BDF8"
+borderColor = "#1C2A3E"
+linkColor = "#7DD3FC"
+codeBackgroundColor = "#0E1826"
+codeTextColor = "#7DE3F5"
+greenColor = "#34D399"
+greenBackgroundColor = "#0E2A22"
+greenTextColor = "#6EE7B7"
+blueColor = "#60A5FA"
+blueBackgroundColor = "#0E1E36"
+blueTextColor = "#93C5FD"
+yellowColor = "#FACC15"
+yellowBackgroundColor = "#2C2410"
+yellowTextColor = "#FDE047"
+orangeColor = "#FB923C"
+orangeBackgroundColor = "#2E1C0E"
+orangeTextColor = "#FDBA74"
+redColor = "#F87171"
+redBackgroundColor = "#2E1418"
+redTextColor = "#FCA5A5"
+grayColor = "#8FA3BC"
+grayBackgroundColor = "#131D2B"
+grayTextColor = "#8FA3BC"
+
+[browser]
+gatherUsageStats = false
