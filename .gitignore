@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# NovaRetail platform: runtime write store (approved incidents, reroutes).
+# The committed fixtures in data/mock/ stay pristine; this is per-run state.
+src/supplychain/data/runtime/

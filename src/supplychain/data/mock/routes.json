@@ -1,0 +1,150 @@
+[
+  {
+    "route_id": "RTE-101",
+    "origin": "Port of Los Angeles, CA",
+    "destination_warehouse_id": "WH-N05",
+    "mode": "truck",
+    "transit_days": 2,
+    "status": "clear",
+    "disruption": null,
+    "alternate_route_ids": [],
+    "last_updated": "2026-07-30T06:00:00Z"
+  },
+  {
+    "route_id": "RTE-102",
+    "origin": "Port of Los Angeles, CA",
+    "destination_warehouse_id": "WH-N04",
+    "mode": "rail",
+    "transit_days": 4,
+    "status": "congested",
+    "disruption": "Rail yard backlog at Barstow, CA adding 12-24h dwell time.",
+    "alternate_route_ids": [
+      "RTE-106"
+    ],
+    "last_updated": "2026-07-30T06:00:00Z"
+  },
+  {
+    "route_id": "RTE-103",
+    "origin": "Port of Seattle, WA",
+    "destination_warehouse_id": "WH-N06",
+    "mode": "truck",
+    "transit_days": 1,
+    "status": "clear",
+    "disruption": null,
+    "alternate_route_ids": [],
+    "last_updated": "2026-07-30T06:00:00Z"
+  },
+  {
+    "route_id": "RTE-104",
+    "origin": "Port of Newark, NJ",
+    "destination_warehouse_id": "WH-N01",
+    "mode": "truck",
+    "transit_days": 1,
+    "status": "clear",
+    "disruption": null,
+    "alternate_route_ids": [],
+    "last_updated": "2026-07-30T06:00:00Z"
+  },
+  {
+    "route_id": "RTE-105",
+    "origin": "Port of Savannah, GA",
+    "destination_warehouse_id": "WH-N02",
+    "mode": "truck",
+    "transit_days": 2,
+    "status": "disrupted",
+    "disruption": "I-16 closed westbound after bridge inspection; detour adds 6h.",
+    "alternate_route_ids": [
+      "RTE-111"
+    ],
+    "last_updated": "2026-07-30T06:00:00Z"
+  },
+  {
+    "route_id": "RTE-106",
+    "origin": "Laredo, TX crossing",
+    "destination_warehouse_id": "WH-N04",
+    "mode": "truck",
+    "transit_days": 3,
+    "status": "clear",
+    "disruption": null,
+    "alternate_route_ids": [
+      "RTE-102"
+    ],
+    "last_updated": "2026-07-30T06:00:00Z"
+  },
+  {
+    "route_id": "RTE-107",
+    "origin": "Chicago, IL hub",
+    "destination_warehouse_id": "WH-N03",
+    "mode": "rail",
+    "transit_days": 2,
+    "status": "clear",
+    "disruption": null,
+    "alternate_route_ids": [
+      "RTE-110"
+    ],
+    "last_updated": "2026-07-30T06:00:00Z"
+  },
+  {
+    "route_id": "RTE-108",
+    "origin": "Memphis, TN air hub",
+    "destination_warehouse_id": "WH-N07",
+    "mode": "air",
+    "transit_days": 1,
+    "status": "clear",
+    "disruption": null,
+    "alternate_route_ids": [],
+    "last_updated": "2026-07-30T06:00:00Z"
+  },
+  {
+    "route_id": "RTE-109",
+    "origin": "Denver, CO hub",
+    "destination_warehouse_id": "WH-N08",
+    "mode": "truck",
+    "transit_days": 2,
+    "status": "weather_hold",
+    "disruption": "High-wind advisory on I-70 through Eisenhower Tunnel.",
+    "alternate_route_ids": [
+      "RTE-112"
+    ],
+    "last_updated": "2026-07-30T06:00:00Z"
+  },
+  {
+    "route_id": "RTE-110",
+    "origin": "Port of Los Angeles, CA",
+    "destination_warehouse_id": "WH-N03",
+    "mode": "rail",
+    "transit_days": 5,
+    "status": "clear",
+    "disruption": null,
+    "alternate_route_ids": [
+      "RTE-107"
+    ],
+    "last_updated": "2026-07-30T06:00:00Z"
+  },
+  {
+    "route_id": "RTE-111",
+    "origin": "Port of Charleston, SC",
+    "destination_warehouse_id": "WH-N02",
+    "mode": "truck",
+    "transit_days": 3,
+    "status": "clear",
+    "disruption": null,
+    "alternate_route_ids": [
+      "RTE-105"
+    ],
+    "last_updated": "2026-07-30T06:00:00Z"
+  },
+  {
+    "route_id": "RTE-112",
+    "origin": "Kansas City, MO hub",
+    "destination_warehouse_id": "WH-N08",
+    "mode": "rail",
+    "transit_days": 3,
+    "status": "clear",
+    "disruption": null,
+    "alternate_route_ids": [
+      "RTE-109"
+    ],
+    "last_updated": "2026-07-30T06:00:00Z"
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "generated_by": "scripts/generate_mock_data.py",
+  "seed": 20260730,
+  "scenario_date": "2026-07-30",
+  "counts": {
+    "warehouses": 8,
+    "products": 12,
+    "suppliers": 12,
+    "routes": 12,
+    "shipments": 28,
+    "orders": 57,
+    "inventory_rows": 96
+  }
+}

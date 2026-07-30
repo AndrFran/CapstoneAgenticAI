@@ -1,0 +1,66 @@
+[
+  {
+    "warehouse_id": "WH-N01",
+    "name": "Newark RDC",
+    "region": "Northeast",
+    "location": "Newark, NJ",
+    "capacity_pallets": 12000,
+    "manager": "ops.wh-n01@novaretail.example"
+  },
+  {
+    "warehouse_id": "WH-N02",
+    "name": "Atlanta RDC",
+    "region": "Southeast",
+    "location": "Atlanta, GA",
+    "capacity_pallets": 12750,
+    "manager": "ops.wh-n02@novaretail.example"
+  },
+  {
+    "warehouse_id": "WH-N03",
+    "name": "Columbus RDC",
+    "region": "Midwest",
+    "location": "Columbus, OH",
+    "capacity_pallets": 13500,
+    "manager": "ops.wh-n03@novaretail.example"
+  },
+  {
+    "warehouse_id": "WH-N04",
+    "name": "Dallas RDC",
+    "region": "Southwest",
+    "location": "Dallas, TX",
+    "capacity_pallets": 14250,
+    "manager": "ops.wh-n04@novaretail.example"
+  },
+  {
+    "warehouse_id": "WH-N05",
+    "name": "Ontario RDC",
+    "region": "West",
+    "location": "Ontario, CA",
+    "capacity_pallets": 15000,
+    "manager": "ops.wh-n05@novaretail.example"
+  },
+  {
+    "warehouse_id": "WH-N06",
+    "name": "Kent RDC",
+    "region": "Northwest",
+    "location": "Kent, WA",
+    "capacity_pallets": 15750,
+    "manager": "ops.wh-n06@novaretail.example"
+  },
+  {
+    "warehouse_id": "WH-N07",
+    "name": "Memphis RDC",
+    "region": "Southeast",
+    "location": "Memphis, TN",
+    "capacity_pallets": 16500,
+    "manager": "ops.wh-n07@novaretail.example"
+  },
+  {
+    "warehouse_id": "WH-N08",
+    "name": "Denver RDC",
+    "region": "Midwest",
+    "location": "Denver, CO",
+    "capacity_pallets": 17250,
+    "manager": "ops.wh-n08@novaretail.example"
+  }
+]

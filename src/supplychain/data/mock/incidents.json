@@ -1,0 +1,20 @@
+[
+  {
+    "incident_id": "INC-2026-0001",
+    "type": "shipment_delay",
+    "severity": "high",
+    "status": "open",
+    "title": "SHP-2026-0002 delayed 72h into WH-N02",
+    "description": "Apparel inbound from SUP-005 held by I-16 closure on RTE-105. Two store replenishment waves at risk.",
+    "related_shipment_id": "SHP-2026-0002",
+    "related_supplier_id": "SUP-005",
+    "related_warehouse_id": "WH-N02",
+    "related_skus": [
+      "SKU-3001",
+      "SKU-3002"
+    ],
+    "created_at": "2026-07-29T14:20:00Z",
+    "owner": "central.supplychain@novaretail.example",
+    "escalated": false
+  }
+]

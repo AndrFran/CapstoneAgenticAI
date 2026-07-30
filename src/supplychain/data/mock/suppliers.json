@@ -1,0 +1,310 @@
+[
+  {
+    "supplier_id": "SUP-001",
+    "name": "Meridian Electronics Ltd",
+    "region": "West",
+    "country": "Vietnam",
+    "tier": "strategic",
+    "status": "active",
+    "contact_email": "orders@meridian.example",
+    "contact_phone": "+1-555-3864",
+    "lead_time_days": 12,
+    "reliability_score": 0.843,
+    "on_time_delivery_rate": 0.719,
+    "quality_score": 0.907,
+    "min_order_qty": 50,
+    "supplied_skus": [
+      "SKU-1001",
+      "SKU-1002",
+      "SKU-1003"
+    ],
+    "unit_prices": {
+      "SKU-1001": 701.7,
+      "SKU-1002": 39.78,
+      "SKU-1003": 18.83
+    },
+    "notes": ""
+  },
+  {
+    "supplier_id": "SUP-002",
+    "name": "Kestrel Components Co",
+    "region": "West",
+    "country": "Taiwan",
+    "tier": "strategic",
+    "status": "active",
+    "contact_email": "orders@kestrel.example",
+    "contact_phone": "+1-555-8667",
+    "lead_time_days": 15,
+    "reliability_score": 0.702,
+    "on_time_delivery_rate": 0.855,
+    "quality_score": 0.944,
+    "min_order_qty": 250,
+    "supplied_skus": [
+      "SKU-1001",
+      "SKU-1002",
+      "SKU-1003"
+    ],
+    "unit_prices": {
+      "SKU-1001": 706.08,
+      "SKU-1002": 40.49,
+      "SKU-1003": 17.47
+    },
+    "notes": ""
+  },
+  {
+    "supplier_id": "SUP-003",
+    "name": "Basalt Home Goods",
+    "region": "Midwest",
+    "country": "Mexico",
+    "tier": "preferred",
+    "status": "active",
+    "contact_email": "orders@basalt.example",
+    "contact_phone": "+1-555-2129",
+    "lead_time_days": 6,
+    "reliability_score": 0.826,
+    "on_time_delivery_rate": 0.82,
+    "quality_score": 0.879,
+    "min_order_qty": 500,
+    "supplied_skus": [
+      "SKU-2001",
+      "SKU-2002",
+      "SKU-2003"
+    ],
+    "unit_prices": {
+      "SKU-2001": 27.82,
+      "SKU-2002": 22.26,
+      "SKU-2003": 32.55
+    },
+    "notes": ""
+  },
+  {
+    "supplier_id": "SUP-004",
+    "name": "Lakeshore Housewares",
+    "region": "Midwest",
+    "country": "USA",
+    "tier": "preferred",
+    "status": "active",
+    "contact_email": "orders@lakeshore.example",
+    "contact_phone": "+1-555-8293",
+    "lead_time_days": 5,
+    "reliability_score": 0.912,
+    "on_time_delivery_rate": 0.738,
+    "quality_score": 0.824,
+    "min_order_qty": 100,
+    "supplied_skus": [
+      "SKU-2001",
+      "SKU-2002",
+      "SKU-2003"
+    ],
+    "unit_prices": {
+      "SKU-2001": 25.26,
+      "SKU-2002": 20.0,
+      "SKU-2003": 32.91
+    },
+    "notes": ""
+  },
+  {
+    "supplier_id": "SUP-005",
+    "name": "Vantage Apparel Group",
+    "region": "Southeast",
+    "country": "Bangladesh",
+    "tier": "strategic",
+    "status": "at_risk",
+    "contact_email": "orders@vantage.example",
+    "contact_phone": "+1-555-3006",
+    "lead_time_days": 9,
+    "reliability_score": 0.763,
+    "on_time_delivery_rate": 0.809,
+    "quality_score": 0.921,
+    "min_order_qty": 50,
+    "supplied_skus": [
+      "SKU-3001",
+      "SKU-3002"
+    ],
+    "unit_prices": {
+      "SKU-3001": 44.89,
+      "SKU-3002": 60.45
+    },
+    "notes": "Capacity constrained through Q3; two missed windows in July."
+  },
+  {
+    "supplier_id": "SUP-006",
+    "name": "Cedarline Textiles",
+    "region": "Southeast",
+    "country": "Portugal",
+    "tier": "backup",
+    "status": "active",
+    "contact_email": "orders@cedarline.example",
+    "contact_phone": "+1-555-8099",
+    "lead_time_days": 6,
+    "reliability_score": 0.788,
+    "on_time_delivery_rate": 0.914,
+    "quality_score": 0.873,
+    "min_order_qty": 250,
+    "supplied_skus": [
+      "SKU-3001",
+      "SKU-3002"
+    ],
+    "unit_prices": {
+      "SKU-3001": 42.12,
+      "SKU-3002": 57.6
+    },
+    "notes": ""
+  },
+  {
+    "supplier_id": "SUP-007",
+    "name": "Harvest Foods Coop",
+    "region": "Northeast",
+    "country": "USA",
+    "tier": "preferred",
+    "status": "active",
+    "contact_email": "orders@harvest.example",
+    "contact_phone": "+1-555-9668",
+    "lead_time_days": 16,
+    "reliability_score": 0.694,
+    "on_time_delivery_rate": 0.879,
+    "quality_score": 0.916,
+    "min_order_qty": 250,
+    "supplied_skus": [
+      "SKU-4001",
+      "SKU-4002"
+    ],
+    "unit_prices": {
+      "SKU-4001": 22.74,
+      "SKU-4002": 16.96
+    },
+    "notes": ""
+  },
+  {
+    "supplier_id": "SUP-008",
+    "name": "Terrafirma Grocers",
+    "region": "Northeast",
+    "country": "Canada",
+    "tier": "backup",
+    "status": "active",
+    "contact_email": "orders@terrafirma.example",
+    "contact_phone": "+1-555-4306",
+    "lead_time_days": 16,
+    "reliability_score": 0.833,
+    "on_time_delivery_rate": 0.773,
+    "quality_score": 0.982,
+    "min_order_qty": 250,
+    "supplied_skus": [
+      "SKU-4001",
+      "SKU-4002"
+    ],
+    "unit_prices": {
+      "SKU-4001": 23.63,
+      "SKU-4002": 16.41
+    },
+    "notes": ""
+  },
+  {
+    "supplier_id": "SUP-009",
+    "name": "BrightPlay Manufacturing",
+    "region": "Southwest",
+    "country": "China",
+    "tier": "preferred",
+    "status": "active",
+    "contact_email": "orders@brightplay.example",
+    "contact_phone": "+1-555-5106",
+    "lead_time_days": 16,
+    "reliability_score": 0.708,
+    "on_time_delivery_rate": 0.749,
+    "quality_score": 0.801,
+    "min_order_qty": 50,
+    "supplied_skus": [
+      "SKU-5001",
+      "SKU-5002"
+    ],
+    "unit_prices": {
+      "SKU-5001": 31.66,
+      "SKU-5002": 60.17
+    },
+    "notes": ""
+  },
+  {
+    "supplier_id": "SUP-010",
+    "name": "Orbit Toyworks",
+    "region": "Southwest",
+    "country": "Poland",
+    "tier": "backup",
+    "status": "suspended",
+    "contact_email": "orders@orbit.example",
+    "contact_phone": "+1-555-9284",
+    "lead_time_days": 7,
+    "reliability_score": 0.916,
+    "on_time_delivery_rate": 0.989,
+    "quality_score": 0.932,
+    "min_order_qty": 500,
+    "supplied_skus": [
+      "SKU-5001",
+      "SKU-5002"
+    ],
+    "unit_prices": {
+      "SKU-5001": 30.8,
+      "SKU-5002": 58.43
+    },
+    "notes": "Suspended pending quality audit closure."
+  },
+  {
+    "supplier_id": "SUP-011",
+    "name": "Northwind Logistics Supply",
+    "region": "Northwest",
+    "country": "USA",
+    "tier": "backup",
+    "status": "active",
+    "contact_email": "orders@northwind.example",
+    "contact_phone": "+1-555-5501",
+    "lead_time_days": 7,
+    "reliability_score": 0.797,
+    "on_time_delivery_rate": 0.837,
+    "quality_score": 0.955,
+    "min_order_qty": 100,
+    "supplied_skus": [
+      "SKU-2001",
+      "SKU-2002",
+      "SKU-2003",
+      "SKU-5001",
+      "SKU-5002"
+    ],
+    "unit_prices": {
+      "SKU-2001": 28.53,
+      "SKU-2002": 20.3,
+      "SKU-2003": 31.75,
+      "SKU-5001": 31.84,
+      "SKU-5002": 65.74
+    },
+    "notes": ""
+  },
+  {
+    "supplier_id": "SUP-012",
+    "name": "Solstice Trading Partners",
+    "region": "West",
+    "country": "India",
+    "tier": "preferred",
+    "status": "active",
+    "contact_email": "orders@solstice.example",
+    "contact_phone": "+1-555-8403",
+    "lead_time_days": 16,
+    "reliability_score": 0.865,
+    "on_time_delivery_rate": 0.945,
+    "quality_score": 0.939,
+    "min_order_qty": 250,
+    "supplied_skus": [
+      "SKU-1001",
+      "SKU-1002",
+      "SKU-1003",
+      "SKU-3001",
+      "SKU-3002"
+    ],
+    "unit_prices": {
+      "SKU-1001": 687.9,
+      "SKU-1002": 45.45,
+      "SKU-1003": 18.49,
+      "SKU-3001": 40.56,
+      "SKU-3002": 54.55
+    },
+    "notes": ""
+  }
+]

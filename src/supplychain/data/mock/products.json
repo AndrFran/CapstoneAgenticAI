@@ -1,0 +1,98 @@
+[
+  {
+    "sku": "SKU-1001",
+    "name": "AuroraTop 14 Laptop",
+    "category": "Electronics",
+    "unit_cost": 780.0,
+    "retail_price": 1107.6,
+    "unit_of_measure": "each"
+  },
+  {
+    "sku": "SKU-1002",
+    "name": "PulseBuds Wireless Earbuds",
+    "category": "Electronics",
+    "unit_cost": 42.5,
+    "retail_price": 60.35,
+    "unit_of_measure": "each"
+  },
+  {
+    "sku": "SKU-1003",
+    "name": "NovaCharge 65W Adapter",
+    "category": "Electronics",
+    "unit_cost": 18.9,
+    "retail_price": 26.84,
+    "unit_of_measure": "each"
+  },
+  {
+    "sku": "SKU-2001",
+    "name": "HearthPan 12in Skillet",
+    "category": "Home",
+    "unit_cost": 27.4,
+    "retail_price": 38.91,
+    "unit_of_measure": "each"
+  },
+  {
+    "sku": "SKU-2002",
+    "name": "LumenLamp LED Desk Lamp",
+    "category": "Home",
+    "unit_cost": 21.75,
+    "retail_price": 30.88,
+    "unit_of_measure": "each"
+  },
+  {
+    "sku": "SKU-2003",
+    "name": "CottonCloud Bath Towel Set",
+    "category": "Home",
+    "unit_cost": 33.1,
+    "retail_price": 47.0,
+    "unit_of_measure": "each"
+  },
+  {
+    "sku": "SKU-3001",
+    "name": "TrailRunner Sneakers",
+    "category": "Apparel",
+    "unit_cost": 46.2,
+    "retail_price": 65.6,
+    "unit_of_measure": "each"
+  },
+  {
+    "sku": "SKU-3002",
+    "name": "AllWeather Rain Jacket",
+    "category": "Apparel",
+    "unit_cost": 58.0,
+    "retail_price": 82.36,
+    "unit_of_measure": "each"
+  },
+  {
+    "sku": "SKU-4001",
+    "name": "VitaBlend Protein Powder",
+    "category": "Grocery",
+    "unit_cost": 24.6,
+    "retail_price": 34.93,
+    "unit_of_measure": "each"
+  },
+  {
+    "sku": "SKU-4002",
+    "name": "MorningHarvest Coffee 1kg",
+    "category": "Grocery",
+    "unit_cost": 16.35,
+    "retail_price": 23.22,
+    "unit_of_measure": "each"
+  },
+  {
+    "sku": "SKU-5001",
+    "name": "PlayLab Building Blocks 500pc",
+    "category": "Toys",
+    "unit_cost": 29.99,
+    "retail_price": 42.59,
+    "unit_of_measure": "each"
+  },
+  {
+    "sku": "SKU-5002",
+    "name": "SkyGlide RC Drone Mini",
+    "category": "Toys",
+    "unit_cost": 63.4,
+    "retail_price": 90.03,
+    "unit_of_measure": "each"
+  }
+]

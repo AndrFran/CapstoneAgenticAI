@@ -1,0 +1,25 @@
+# Pinned to the LangChain / LangGraph 1.x line with Google AI (Gemini) as the
+# model provider - see docs/architecture.md.
+
+# Core orchestration
+langchain>=1.3.0,<2
+langchain-core>=1.5.0,<2
+langgraph>=1.2.0,<2
+langgraph-checkpoint>=4.1.0
+
+# LLM provider (Google AI / Gemini)
+langchain-google-genai>=4.3.0,<5
+
+# Observability / evaluation
+langsmith>=0.10.0
+
+# UI
+streamlit>=1.60.0
+
+# Support
+pydantic>=2.13.0
+python-dotenv>=1.2.0
+requests>=2.32.0
+
+# Dev / test
+pytest>=8.3.0

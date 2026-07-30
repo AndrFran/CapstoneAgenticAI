@@ -1,0 +1,782 @@
+[
+  {
+    "shipment_id": "SHP-2026-0001",
+    "supplier_id": "SUP-001",
+    "carrier": "Atlas Freight",
+    "route_id": "RTE-102",
+    "origin": "Port of Los Angeles, CA",
+    "destination_warehouse_id": "WH-N04",
+    "mode": "rail",
+    "status": "delayed",
+    "departed_at": "2026-07-25T08:00:00Z",
+    "original_eta": "2026-07-29T17:00:00Z",
+    "eta": "2026-07-30T17:00:00Z",
+    "delay_hours": 36,
+    "last_scan_location": "Port of Los Angeles, CA",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-1001",
+        "quantity": 400,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-1003",
+        "quantity": 900,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 329010.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0002",
+    "supplier_id": "SUP-005",
+    "carrier": "Continental Cargo",
+    "route_id": "RTE-105",
+    "origin": "Port of Savannah, GA",
+    "destination_warehouse_id": "WH-N02",
+    "mode": "truck",
+    "status": "delayed",
+    "departed_at": "2026-07-28T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-08-02T17:00:00Z",
+    "delay_hours": 72,
+    "last_scan_location": "Port of Savannah, GA",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-3001",
+        "quantity": 1200,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-3002",
+        "quantity": 600,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 90240.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0003",
+    "supplier_id": "SUP-009",
+    "carrier": "Continental Cargo",
+    "route_id": "RTE-106",
+    "origin": "Laredo, TX crossing",
+    "destination_warehouse_id": "WH-N04",
+    "mode": "truck",
+    "status": "in_transit",
+    "departed_at": "2026-07-25T08:00:00Z",
+    "original_eta": "2026-07-28T17:00:00Z",
+    "eta": "2026-07-28T17:00:00Z",
+    "delay_hours": 0,
+    "last_scan_location": "Laredo, TX crossing",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-5001",
+        "quantity": 800,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 23992.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0004",
+    "supplier_id": "SUP-007",
+    "carrier": "Atlas Freight",
+    "route_id": "RTE-104",
+    "origin": "Port of Newark, NJ",
+    "destination_warehouse_id": "WH-N01",
+    "mode": "truck",
+    "status": "delivered",
+    "departed_at": "2026-07-28T08:00:00Z",
+    "original_eta": "2026-07-29T17:00:00Z",
+    "eta": "2026-07-29T17:00:00Z",
+    "delay_hours": 0,
+    "last_scan_location": "WH-N01",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-4001",
+        "quantity": 1500,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-4002",
+        "quantity": 2000,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 69600.0,
+    "priority": "expedited"
+  },
+  {
+    "shipment_id": "SHP-2026-0005",
+    "supplier_id": "SUP-003",
+    "carrier": "BlueLine Express",
+    "route_id": "RTE-109",
+    "origin": "Denver, CO hub",
+    "destination_warehouse_id": "WH-N08",
+    "mode": "truck",
+    "status": "damaged",
+    "departed_at": "2026-07-26T08:00:00Z",
+    "original_eta": "2026-07-28T17:00:00Z",
+    "eta": "2026-07-28T17:00:00Z",
+    "delay_hours": 12,
+    "last_scan_location": "Denver, CO hub",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-2001",
+        "quantity": 700,
+        "damaged_quantity": 126
+      },
+      {
+        "sku": "SKU-2002",
+        "quantity": 500,
+        "damaged_quantity": 90
+      }
+    ],
+    "value_usd": 30055.0,
+    "priority": "expedited"
+  },
+  {
+    "shipment_id": "SHP-2026-0006",
+    "supplier_id": "SUP-002",
+    "carrier": "Atlas Freight",
+    "route_id": "RTE-101",
+    "origin": "Port of Los Angeles, CA",
+    "destination_warehouse_id": "WH-N05",
+    "mode": "truck",
+    "status": "at_customs",
+    "departed_at": "2026-07-26T08:00:00Z",
+    "original_eta": "2026-07-28T17:00:00Z",
+    "eta": "2026-07-28T17:00:00Z",
+    "delay_hours": 18,
+    "last_scan_location": "Port of Los Angeles, CA",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-1002",
+        "quantity": 2500,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 106250.0,
+    "priority": "expedited"
+  },
+  {
+    "shipment_id": "SHP-2026-0007",
+    "supplier_id": "SUP-001",
+    "carrier": "Continental Cargo",
+    "route_id": "RTE-111",
+    "origin": "Port of Charleston, SC",
+    "destination_warehouse_id": "WH-N02",
+    "mode": "truck",
+    "status": "in_transit",
+    "departed_at": "2026-07-25T08:00:00Z",
+    "original_eta": "2026-07-28T17:00:00Z",
+    "eta": "2026-07-29T17:00:00Z",
+    "delay_hours": 24,
+    "last_scan_location": "Port of Charleston, SC",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-1003",
+        "quantity": 600,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-1001",
+        "quantity": 300,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 245340.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0008",
+    "supplier_id": "SUP-002",
+    "carrier": "Pacific Rail",
+    "route_id": "RTE-104",
+    "origin": "Port of Newark, NJ",
+    "destination_warehouse_id": "WH-N01",
+    "mode": "truck",
+    "status": "in_transit",
+    "departed_at": "2026-07-27T08:00:00Z",
+    "original_eta": "2026-07-28T17:00:00Z",
+    "eta": "2026-07-29T17:00:00Z",
+    "delay_hours": 24,
+    "last_scan_location": "Port of Newark, NJ",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-1002",
+        "quantity": 1200,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 51000.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0009",
+    "supplier_id": "SUP-002",
+    "carrier": "Continental Cargo",
+    "route_id": "RTE-104",
+    "origin": "Port of Newark, NJ",
+    "destination_warehouse_id": "WH-N01",
+    "mode": "truck",
+    "status": "in_transit",
+    "departed_at": "2026-07-29T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-07-30T17:00:00Z",
+    "delay_hours": 12,
+    "last_scan_location": "Port of Newark, NJ",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-1001",
+        "quantity": 450,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-1003",
+        "quantity": 600,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 362340.0,
+    "priority": "expedited"
+  },
+  {
+    "shipment_id": "SHP-2026-0010",
+    "supplier_id": "SUP-003",
+    "carrier": "Continental Cargo",
+    "route_id": "RTE-104",
+    "origin": "Port of Newark, NJ",
+    "destination_warehouse_id": "WH-N01",
+    "mode": "truck",
+    "status": "in_transit",
+    "departed_at": "2026-07-29T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-07-30T17:00:00Z",
+    "delay_hours": 6,
+    "last_scan_location": "Port of Newark, NJ",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-2001",
+        "quantity": 1200,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-2002",
+        "quantity": 900,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 52455.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0011",
+    "supplier_id": "SUP-003",
+    "carrier": "Continental Cargo",
+    "route_id": "RTE-109",
+    "origin": "Denver, CO hub",
+    "destination_warehouse_id": "WH-N08",
+    "mode": "truck",
+    "status": "delayed",
+    "departed_at": "2026-07-27T08:00:00Z",
+    "original_eta": "2026-07-29T17:00:00Z",
+    "eta": "2026-07-29T17:00:00Z",
+    "delay_hours": 12,
+    "last_scan_location": "Denver, CO hub",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-2002",
+        "quantity": 300,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 6525.0,
+    "priority": "expedited"
+  },
+  {
+    "shipment_id": "SHP-2026-0012",
+    "supplier_id": "SUP-004",
+    "carrier": "BlueLine Express",
+    "route_id": "RTE-110",
+    "origin": "Port of Los Angeles, CA",
+    "destination_warehouse_id": "WH-N03",
+    "mode": "rail",
+    "status": "delayed",
+    "departed_at": "2026-07-25T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-07-30T17:00:00Z",
+    "delay_hours": 6,
+    "last_scan_location": "Port of Los Angeles, CA",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-2002",
+        "quantity": 150,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-2001",
+        "quantity": 450,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 15592.5,
+    "priority": "expedited"
+  },
+  {
+    "shipment_id": "SHP-2026-0013",
+    "supplier_id": "SUP-004",
+    "carrier": "Atlas Freight",
+    "route_id": "RTE-103",
+    "origin": "Port of Seattle, WA",
+    "destination_warehouse_id": "WH-N06",
+    "mode": "truck",
+    "status": "damaged",
+    "departed_at": "2026-07-27T08:00:00Z",
+    "original_eta": "2026-07-28T17:00:00Z",
+    "eta": "2026-07-28T17:00:00Z",
+    "delay_hours": 0,
+    "last_scan_location": "Port of Seattle, WA",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-2003",
+        "quantity": 300,
+        "damaged_quantity": 54
+      },
+      {
+        "sku": "SKU-2001",
+        "quantity": 300,
+        "damaged_quantity": 54
+      }
+    ],
+    "value_usd": 18150.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0014",
+    "supplier_id": "SUP-005",
+    "carrier": "Atlas Freight",
+    "route_id": "RTE-110",
+    "origin": "Port of Los Angeles, CA",
+    "destination_warehouse_id": "WH-N03",
+    "mode": "rail",
+    "status": "damaged",
+    "departed_at": "2026-07-25T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-07-30T17:00:00Z",
+    "delay_hours": 6,
+    "last_scan_location": "Port of Los Angeles, CA",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-3002",
+        "quantity": 1200,
+        "damaged_quantity": 216
+      }
+    ],
+    "value_usd": 69600.0,
+    "priority": "expedited"
+  },
+  {
+    "shipment_id": "SHP-2026-0015",
+    "supplier_id": "SUP-005",
+    "carrier": "Pacific Rail",
+    "route_id": "RTE-102",
+    "origin": "Port of Los Angeles, CA",
+    "destination_warehouse_id": "WH-N04",
+    "mode": "rail",
+    "status": "at_customs",
+    "departed_at": "2026-07-24T08:00:00Z",
+    "original_eta": "2026-07-28T17:00:00Z",
+    "eta": "2026-07-28T17:00:00Z",
+    "delay_hours": 0,
+    "last_scan_location": "Port of Los Angeles, CA",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-3001",
+        "quantity": 1200,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-3002",
+        "quantity": 900,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 107640.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0016",
+    "supplier_id": "SUP-006",
+    "carrier": "Atlas Freight",
+    "route_id": "RTE-106",
+    "origin": "Laredo, TX crossing",
+    "destination_warehouse_id": "WH-N04",
+    "mode": "truck",
+    "status": "out_for_delivery",
+    "departed_at": "2026-07-27T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-07-30T17:00:00Z",
+    "delay_hours": 0,
+    "last_scan_location": "Laredo, TX crossing",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-3001",
+        "quantity": 900,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-3002",
+        "quantity": 450,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 67680.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0017",
+    "supplier_id": "SUP-006",
+    "carrier": "Pacific Rail",
+    "route_id": "RTE-102",
+    "origin": "Port of Los Angeles, CA",
+    "destination_warehouse_id": "WH-N04",
+    "mode": "rail",
+    "status": "delivered",
+    "departed_at": "2026-07-26T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-07-30T17:00:00Z",
+    "delay_hours": 0,
+    "last_scan_location": "WH-N04",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-3001",
+        "quantity": 300,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 13860.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0018",
+    "supplier_id": "SUP-007",
+    "carrier": "Atlas Freight",
+    "route_id": "RTE-112",
+    "origin": "Kansas City, MO hub",
+    "destination_warehouse_id": "WH-N08",
+    "mode": "rail",
+    "status": "in_transit",
+    "departed_at": "2026-07-25T08:00:00Z",
+    "original_eta": "2026-07-28T17:00:00Z",
+    "eta": "2026-07-28T17:00:00Z",
+    "delay_hours": 0,
+    "last_scan_location": "Kansas City, MO hub",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-4002",
+        "quantity": 150,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-4001",
+        "quantity": 900,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 24592.5,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0019",
+    "supplier_id": "SUP-008",
+    "carrier": "Continental Cargo",
+    "route_id": "RTE-106",
+    "origin": "Laredo, TX crossing",
+    "destination_warehouse_id": "WH-N04",
+    "mode": "truck",
+    "status": "delayed",
+    "departed_at": "2026-07-26T08:00:00Z",
+    "original_eta": "2026-07-29T17:00:00Z",
+    "eta": "2026-07-29T17:00:00Z",
+    "delay_hours": 12,
+    "last_scan_location": "Laredo, TX crossing",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-4002",
+        "quantity": 300,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-4001",
+        "quantity": 1200,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 34425.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0020",
+    "supplier_id": "SUP-008",
+    "carrier": "Pacific Rail",
+    "route_id": "RTE-112",
+    "origin": "Kansas City, MO hub",
+    "destination_warehouse_id": "WH-N08",
+    "mode": "rail",
+    "status": "delayed",
+    "departed_at": "2026-07-25T08:00:00Z",
+    "original_eta": "2026-07-28T17:00:00Z",
+    "eta": "2026-07-28T17:00:00Z",
+    "delay_hours": 12,
+    "last_scan_location": "Kansas City, MO hub",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-4001",
+        "quantity": 300,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-4002",
+        "quantity": 1200,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 27000.0,
+    "priority": "expedited"
+  },
+  {
+    "shipment_id": "SHP-2026-0021",
+    "supplier_id": "SUP-009",
+    "carrier": "Atlas Freight",
+    "route_id": "RTE-111",
+    "origin": "Port of Charleston, SC",
+    "destination_warehouse_id": "WH-N02",
+    "mode": "truck",
+    "status": "in_transit",
+    "departed_at": "2026-07-26T08:00:00Z",
+    "original_eta": "2026-07-29T17:00:00Z",
+    "eta": "2026-07-30T17:00:00Z",
+    "delay_hours": 24,
+    "last_scan_location": "Port of Charleston, SC",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-5002",
+        "quantity": 450,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-5001",
+        "quantity": 150,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 33028.5,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0022",
+    "supplier_id": "SUP-009",
+    "carrier": "Pacific Rail",
+    "route_id": "RTE-102",
+    "origin": "Port of Los Angeles, CA",
+    "destination_warehouse_id": "WH-N04",
+    "mode": "rail",
+    "status": "delivered",
+    "departed_at": "2026-07-24T08:00:00Z",
+    "original_eta": "2026-07-28T17:00:00Z",
+    "eta": "2026-07-28T17:00:00Z",
+    "delay_hours": 0,
+    "last_scan_location": "WH-N04",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-5001",
+        "quantity": 450,
+        "damaged_quantity": 0
+      },
+      {
+        "sku": "SKU-5002",
+        "quantity": 1200,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 89575.5,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0023",
+    "supplier_id": "SUP-010",
+    "carrier": "Continental Cargo",
+    "route_id": "RTE-110",
+    "origin": "Port of Los Angeles, CA",
+    "destination_warehouse_id": "WH-N03",
+    "mode": "rail",
+    "status": "out_for_delivery",
+    "departed_at": "2026-07-25T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-08-01T17:00:00Z",
+    "delay_hours": 48,
+    "last_scan_location": "Port of Los Angeles, CA",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-5002",
+        "quantity": 450,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 28530.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0024",
+    "supplier_id": "SUP-010",
+    "carrier": "Pacific Rail",
+    "route_id": "RTE-110",
+    "origin": "Port of Los Angeles, CA",
+    "destination_warehouse_id": "WH-N03",
+    "mode": "rail",
+    "status": "at_customs",
+    "departed_at": "2026-07-25T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-07-31T17:00:00Z",
+    "delay_hours": 24,
+    "last_scan_location": "Port of Los Angeles, CA",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-5001",
+        "quantity": 450,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 13495.5,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0025",
+    "supplier_id": "SUP-011",
+    "carrier": "BlueLine Express",
+    "route_id": "RTE-107",
+    "origin": "Chicago, IL hub",
+    "destination_warehouse_id": "WH-N03",
+    "mode": "rail",
+    "status": "out_for_delivery",
+    "departed_at": "2026-07-28T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-07-30T17:00:00Z",
+    "delay_hours": 6,
+    "last_scan_location": "Chicago, IL hub",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-5001",
+        "quantity": 1200,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 35988.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0026",
+    "supplier_id": "SUP-011",
+    "carrier": "Pacific Rail",
+    "route_id": "RTE-106",
+    "origin": "Laredo, TX crossing",
+    "destination_warehouse_id": "WH-N04",
+    "mode": "truck",
+    "status": "at_customs",
+    "departed_at": "2026-07-27T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-07-30T17:00:00Z",
+    "delay_hours": 0,
+    "last_scan_location": "Laredo, TX crossing",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-2001",
+        "quantity": 600,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 16440.0,
+    "priority": "standard"
+  },
+  {
+    "shipment_id": "SHP-2026-0027",
+    "supplier_id": "SUP-012",
+    "carrier": "Atlas Freight",
+    "route_id": "RTE-105",
+    "origin": "Port of Savannah, GA",
+    "destination_warehouse_id": "WH-N02",
+    "mode": "truck",
+    "status": "delivered",
+    "departed_at": "2026-07-28T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-07-30T17:00:00Z",
+    "delay_hours": 0,
+    "last_scan_location": "WH-N02",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-3001",
+        "quantity": 600,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 27720.0,
+    "priority": "expedited"
+  },
+  {
+    "shipment_id": "SHP-2026-0028",
+    "supplier_id": "SUP-012",
+    "carrier": "BlueLine Express",
+    "route_id": "RTE-111",
+    "origin": "Port of Charleston, SC",
+    "destination_warehouse_id": "WH-N02",
+    "mode": "truck",
+    "status": "delayed",
+    "departed_at": "2026-07-27T08:00:00Z",
+    "original_eta": "2026-07-30T17:00:00Z",
+    "eta": "2026-07-30T17:00:00Z",
+    "delay_hours": 6,
+    "last_scan_location": "Port of Charleston, SC",
+    "last_scan_at": "2026-07-30T04:30:00Z",
+    "line_items": [
+      {
+        "sku": "SKU-1001",
+        "quantity": 450,
+        "damaged_quantity": 0
+      }
+    ],
+    "value_usd": 351000.0,
+    "priority": "standard"
+  }
+]
