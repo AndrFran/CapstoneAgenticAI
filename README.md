@@ -200,6 +200,9 @@ table take over, and the UI shows which path was used.
 └── docs/
     ├── architecture.md              # Architecture + diagram
     ├── team-responsibilities.md     # Who owns what
+    ├── presentation-tm3.md          # TM3 presentation talking points
+    ├── handoff-inventory-supplier-recovery.md  # TM3 cross-agent handoff
+    ├── eval_runs_tm3.json           # TM3-focused eval results
     └── langsmith-report.md          # Tracing / evaluation report
 ```
 

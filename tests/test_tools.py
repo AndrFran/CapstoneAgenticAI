@@ -239,6 +239,45 @@ def test_identify_inventory_shortages_only_returns_shortages():
         assert row["available"] < row["reorder_point"]
 
 
+def test_check_inventory_unknown_sku_returns_error_not_exception():
+    result = call(inventory_tools.check_inventory, sku="SKU-9999")
+    assert "error" in result
+    assert "hint" in result or "sample_skus" in result
+
+
+def test_check_warehouse_stock_unknown_pair_returns_error():
+    result = call(
+        inventory_tools.check_warehouse_stock,
+        warehouse_id="WH-N99",
+        sku="SKU-1001",
+    )
+    assert "error" in result
+
+
+def test_find_inventory_transfer_unknown_warehouse_returns_error():
+    result = call(
+        inventory_tools.find_inventory_transfer,
+        sku="SKU-1001",
+        warehouse_id="WH-N99",
+        quantity=100,
+    )
+    assert "error" in result
+
+
+def test_find_inventory_transfer_exposes_remaining_gap_for_handoff():
+    """Contract for supplier/recovery: remaining_gap / fully_covered fields."""
+    result = call(
+        inventory_tools.find_inventory_transfer,
+        sku="SKU-1001",
+        warehouse_id="WH-N04",
+        quantity=500,
+    )
+    assert "remaining_gap" in result
+    assert "fully_covered" in result
+    assert result["remaining_gap"] == max(0, 500 - result["coverable_units"])
+    assert result["fully_covered"] is (result["coverable_units"] >= 500)
+
+
 # ---------------------------------------------------------------------------
 # Supplier tools
 # ---------------------------------------------------------------------------
@@ -312,6 +351,38 @@ def test_estimate_procurement_cost_expedite_costs_more_and_lands_sooner():
     )
     assert expedited["total_landed_cost_usd"] > standard["total_landed_cost_usd"]
     assert expedited["lead_time_days"] < standard["lead_time_days"]
+
+
+def test_get_supplier_details_unknown_id_returns_error_not_exception():
+    result = call(supplier_tools.get_supplier_details, supplier_id="SUP-999")
+    assert "error" in result
+    assert "hint" in result
+
+
+def test_search_supplier_no_match_returns_error():
+    result = call(supplier_tools.search_supplier, query="zzznomatch999")
+    assert "error" in result
+
+
+def test_check_supplier_availability_rejects_bad_quantity():
+    result = call(
+        supplier_tools.check_supplier_availability,
+        supplier_id="SUP-001",
+        sku="SKU-1001",
+        quantity=0,
+    )
+    assert "error" in result
+
+
+def test_estimate_procurement_cost_unknown_price_returns_error():
+    # SUP-010 is suspended electronics; SKU-1001 is apparel — no price on file.
+    result = call(
+        supplier_tools.estimate_procurement_cost,
+        supplier_id="SUP-010",
+        sku="SKU-1001",
+        quantity=100,
+    )
+    assert "error" in result
 
 
 # ---------------------------------------------------------------------------
