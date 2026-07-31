@@ -208,7 +208,8 @@ table take over, and the UI shows which path was used.
     ├── presentation-tm3.md          # TM3 presentation talking points
     ├── handoff-inventory-supplier-recovery.md  # TM3 cross-agent handoff
     ├── eval_runs_tm3.json           # TM3-focused eval results
-    └── langsmith-report.md          # Tracing / evaluation report
+    ├── langsmith-report.md          # Tracing / evaluation report
+    └── langgraph-studio.md          # Running the graph in LangGraph Studio
 ```
 
 ## Data
@@ -287,6 +288,25 @@ python scripts/run_eval_conversations.py --pace 20
 
 Filter in LangSmith with `tag:eval`. Write-up template:
 [`docs/langsmith-report.md`](docs/langsmith-report.md).
+
+### The graph in LangGraph Studio
+
+Traces show a finished run as a tree. Studio draws the workflow itself and lets
+you step a turn through it — inspect state at any node, edit it, resume, and
+act on the approval `interrupt()` rather than read about it afterwards.
+
+Studio attaches to a LangGraph **Server**, which the Streamlit deployment is
+not, so this runs alongside it rather than inside it. `langgraph.json` declares
+the graph; with `langgraph-cli[inmem]` installed in its own environment and the
+package installed (`pip install -e .`):
+
+```bash
+langgraph dev
+```
+
+Full walkthrough, including why the workers are one node each and why the
+served graph carries no checkpointer:
+[`docs/langgraph-studio.md`](docs/langgraph-studio.md).
 
 ## Deployment
 

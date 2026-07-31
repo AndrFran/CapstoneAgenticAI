@@ -336,14 +336,14 @@ def route_from_recovery(state: SupplyChainState) -> Literal["approval", "supervi
 # ---------------------------------------------------------------------------
 
 
-def build_graph(checkpointer: Any | None = None):
-    """Compile the workflow.
+def build_workflow() -> StateGraph:
+    """Assemble the workflow without compiling it.
 
-    Args:
-        checkpointer: LangGraph checkpointer. Defaults to an in-process
-            ``MemorySaver``, which provides conversation memory and is what
-            makes the approval interrupt resumable. Swap in a persistent
-            checkpointer for a real deployment.
+    Split out from :func:`build_graph` because who owns persistence depends on
+    where the graph runs. In-process (Streamlit, tests, scripts) we compile it
+    with our own checkpointer; under a LangGraph Server - ``langgraph dev`` and
+    LangGraph Studio - the server supplies one, and passing our own would be
+    ignored at best. See ``studio.py``.
     """
     builder = StateGraph(SupplyChainState)
 
@@ -381,4 +381,16 @@ def build_graph(checkpointer: Any | None = None):
     builder.add_edge("approval", "supervisor")
     builder.add_edge("respond", END)
 
-    return builder.compile(checkpointer=checkpointer or MemorySaver())
+    return builder
+
+
+def build_graph(checkpointer: Any | None = None):
+    """Compile the workflow.
+
+    Args:
+        checkpointer: LangGraph checkpointer. Defaults to an in-process
+            ``MemorySaver``, which provides conversation memory and is what
+            makes the approval interrupt resumable. Swap in a persistent
+            checkpointer for a real deployment.
+    """
+    return build_workflow().compile(checkpointer=checkpointer or MemorySaver())

@@ -227,3 +227,6 @@ tasks/
 
 # Conversation memory and history (SQLite checkpointer + conversation index).
 .supplychain/
+
+# Local LangGraph Server state, written by `langgraph dev` (docs/langgraph-studio.md).
+.langgraph_api/
