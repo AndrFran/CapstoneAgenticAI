@@ -104,13 +104,34 @@ class TurnResult:
         }
 
 
-def _interrupt_payload(result: dict[str, Any]) -> dict[str, Any] | None:
-    """Pull the approval request out of a graph result that was interrupted."""
-    interrupts = result.get("__interrupt__") or ()
-    for item in interrupts:
+def _first_dict_interrupt(items: Any) -> dict[str, Any] | None:
+    for item in items or ():
         value = getattr(item, "value", item)
         if isinstance(value, dict):
             return value
+    return None
+
+
+def _interrupt_payload(result: dict[str, Any]) -> dict[str, Any] | None:
+    """Pull the approval request out of a graph result that was interrupted."""
+    return _first_dict_interrupt(result.get("__interrupt__"))
+
+
+def _snapshot_interrupt(snapshot: Any) -> dict[str, Any] | None:
+    """Pull the approval request out of a *stored* state snapshot.
+
+    The one in the invoke result only exists in the process that produced it.
+    This reads the same thing back out of the checkpoint, which is what makes a
+    pending approval survive a restart rather than merely being written down.
+    """
+    payload = _first_dict_interrupt(getattr(snapshot, "interrupts", None))
+    if payload is not None:
+        return payload
+    # Older LangGraph exposes interrupts per task rather than on the snapshot.
+    for task in getattr(snapshot, "tasks", ()) or ():
+        payload = _first_dict_interrupt(getattr(task, "interrupts", None))
+        if payload is not None:
+            return payload
     return None
 
 
@@ -133,6 +154,49 @@ def _to_turn_result(thread_id: str, result: dict[str, Any], elapsed: float) -> T
         request=state.get("request"),
         entities=dict(state.get("conversation_entities") or {}),
         latency_seconds=round(elapsed, 2),
+        hops=state.get("hops", 0),
+    )
+
+
+def pending_approval(thread_id: str) -> TurnResult | None:
+    """The approval this thread is paused on, rebuilt from the checkpoint.
+
+    A restart, a browser refresh or simply opening a different conversation and
+    coming back all destroy the in-memory ``TurnResult`` the approval gate was
+    rendering from. The graph is still parked on its ``interrupt()`` either way
+    - the checkpointer holds that - so the gate can be reconstructed instead of
+    leaving the turn stranded with no way to approve or reject it.
+
+    Returns ``None`` when the thread is unknown or not waiting on anything.
+    """
+    try:
+        snapshot = get_compiled_graph().get_state(
+            {"configurable": {"thread_id": thread_id}}
+        )
+    except Exception:  # noqa: BLE001 - an unreadable checkpoint is not fatal
+        return None
+    if snapshot is None:
+        return None
+
+    approval = _snapshot_interrupt(snapshot)
+    if approval is None:
+        return None
+
+    state = snapshot.values or {}
+    return TurnResult(
+        thread_id=thread_id,
+        answer=None,
+        awaiting_approval=True,
+        approval_request=approval,
+        route=list(state.get("visited") or []),
+        severity=state.get("severity"),
+        findings=dict(state.get("findings") or {}),
+        executed_actions=list(state.get("executed_actions") or []),
+        request=state.get("request"),
+        entities=dict(state.get("conversation_entities") or {}),
+        # Unknown and unknowable: the turn that produced this interrupt ran in
+        # a process that may no longer exist. Better than inventing a number.
+        latency_seconds=0.0,
         hops=state.get("hops", 0),
     )
 
