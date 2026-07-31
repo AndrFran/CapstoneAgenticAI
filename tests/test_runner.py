@@ -17,9 +17,16 @@ from langchain_core.messages import AIMessage, HumanMessage
 from supplychain import memory, runner
 
 
+class FakeInterrupt:
+    def __init__(self, value: dict) -> None:
+        self.value = value
+
+
 class FakeSnapshot:
-    def __init__(self, values: dict) -> None:
+    def __init__(self, values: dict, interrupts: tuple = ()) -> None:
         self.values = values
+        self.interrupts = interrupts
+        self.tasks = ()
 
 
 class ScriptedGraph:
@@ -66,7 +73,19 @@ class ScriptedGraph:
             yield {"respond": {"final_response": self.state.get("final_response")}}
 
     def get_state(self, _config):  # noqa: ANN001 - test double
-        return FakeSnapshot(dict(self.state))
+        # A real checkpoint reports the interrupt it is parked on, which is what
+        # lets a pending approval outlive the process that created it.
+        interrupts = ()
+        if self.state.get("pending_action"):
+            interrupts = (
+                FakeInterrupt(
+                    {
+                        "type": "approval_request",
+                        "action": self.state["pending_action"]["action"],
+                    }
+                ),
+            )
+        return FakeSnapshot(dict(self.state), interrupts)
 
 
 def install(monkeypatch) -> ScriptedGraph:
@@ -265,3 +284,56 @@ def test_conversation_turns_skips_empty_messages(monkeypatch):
 
     roles = [turn["role"] for turn in runner.conversation_turns("t-empty")]
     assert roles == ["user", "assistant"]
+
+
+# ---------------------------------------------------------------------------
+# Surviving a restart
+# ---------------------------------------------------------------------------
+#
+# The checkpointer has always held the interrupt; what was missing was a way to
+# read it back. Without one, a restart, a browser refresh or just opening
+# another conversation and returning left the turn parked in the graph forever
+# with no way to approve or reject it.
+
+
+def test_a_pending_approval_is_recovered_from_the_checkpoint(monkeypatch):
+    graph = install(monkeypatch)
+    graph.gate_next = True
+    runner.run_turn("reroute it", "t-restart")
+
+    # Nothing of the original TurnResult is reused - this reads the checkpoint.
+    recovered = runner.pending_approval("t-restart")
+
+    assert recovered is not None
+    assert recovered.awaiting_approval is True
+    assert recovered.approval_request["action"] == "create_incident"
+    assert recovered.thread_id == "t-restart"
+
+
+def test_a_recovered_approval_can_still_be_resolved(monkeypatch):
+    graph = install(monkeypatch)
+    graph.gate_next = True
+    runner.run_turn("reroute it", "t-restart-2")
+
+    assert runner.pending_approval("t-restart-2") is not None
+    runner.resume_turn("t-restart-2", approved=True)
+
+    # Resolved, so the gate must not come back on the next page load.
+    assert runner.pending_approval("t-restart-2") is None
+
+
+def test_a_finished_turn_reports_no_pending_approval(monkeypatch):
+    install(monkeypatch)
+    runner.run_turn("hello", "t-plain")
+    assert runner.pending_approval("t-plain") is None
+
+
+def test_an_unreadable_checkpoint_is_not_fatal(monkeypatch):
+    """A missing thread must not take the page down on load."""
+
+    class Exploding:
+        def get_state(self, _config):  # noqa: ANN001 - test double
+            raise RuntimeError("no such thread")
+
+    monkeypatch.setattr(runner, "get_compiled_graph", lambda: Exploding())
+    assert runner.pending_approval("t-nope") is None

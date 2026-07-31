@@ -31,6 +31,7 @@ from supplychain.runner import (  # noqa: E402
     health,
     list_conversations,
     new_thread_id,
+    pending_approval,
     rename_conversation,
     resume_turn,
     stream_turn,
@@ -89,12 +90,15 @@ def start_new_conversation() -> None:
 def open_conversation(thread_id: str) -> None:
     """Reopen a past conversation, rehydrating it from the checkpointer."""
     st.session_state.thread_id = thread_id
-    st.session_state.pending = None
     st.session_state.queued_prompt = None
     st.session_state.renaming = False
     # Restored turns carry their recorded trace metadata, so a reopened
     # conversation shows the route and severity, not just the text.
     st.session_state.history = list(conversation_turns(thread_id))
+    # If this conversation was left parked on an approval, the graph is still
+    # parked on it. Rebuild the gate from the checkpoint rather than dropping
+    # the turn on the floor with no way to approve or reject it.
+    st.session_state.pending = pending_approval(thread_id)
 
 
 # ---------------------------------------------------------------------------
