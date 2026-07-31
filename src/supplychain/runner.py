@@ -22,7 +22,7 @@ from langgraph.types import Command
 from . import memory
 from .config import get_settings
 from .graph import build_graph
-from .observability import configure_tracing, run_config
+from .observability import configure_tracing, run_config, run_name
 from .progress import ProgressEvent, ProgressTracker
 from .resilience import set_retry_reporter
 
@@ -163,7 +163,9 @@ def run_turn(
     """
     thread_id = thread_id or new_thread_id()
     graph = get_compiled_graph()
-    config = run_config(thread_id, tags=tags)
+    # The question becomes the run name, so a LangSmith project reads as a list
+    # of questions rather than a column of rows all called "LangGraph".
+    config = run_config(thread_id, tags=tags, name=run_name(user_message))
 
     # Register the conversation in the history index. The first user message
     # becomes the title, which is what makes the sidebar list readable.
@@ -212,7 +214,9 @@ def stream_turn(
     graph = get_compiled_graph()
     tracker = ProgressTracker(sink=on_event)
 
-    config = run_config(thread_id, tags=tags)
+    # Named like run_turn's: this is the path the UI actually uses, so without
+    # it every interactive turn shows up in LangSmith as "LangGraph".
+    config = run_config(thread_id, tags=tags, name=run_name(user_message))
     config["callbacks"] = [tracker]
     # Surface the free-tier back-off. Without this the UI is silent for a full
     # minute and an operator cannot tell a rate limit from a hang.
@@ -258,7 +262,11 @@ def resume_turn(
 ) -> TurnResult:
     """Answer a pending approval request and finish the interrupted turn."""
     graph = get_compiled_graph()
-    config = run_config(thread_id, tags=tags)
+    config = run_config(
+        thread_id,
+        tags=tags,
+        name=f"{'approved' if approved else 'rejected'} · resume",
+    )
 
     started = time.perf_counter()
     result = graph.invoke(
