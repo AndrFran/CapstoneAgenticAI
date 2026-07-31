@@ -50,6 +50,16 @@ def _int(name: str, default: int) -> int:
         return default
 
 
+def _float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
 def _effort(name: str, default: str) -> str:
     raw = (os.getenv(name) or "").strip().lower()
     return raw if raw in REASONING_EFFORTS else default
@@ -117,6 +127,16 @@ class Settings:
     max_hops: int = field(default_factory=lambda: _int("SUPPLYCHAIN_MAX_HOPS", 8))
     require_approval: bool = field(
         default_factory=lambda: _bool("SUPPLYCHAIN_REQUIRE_APPROVAL", True)
+    )
+
+    # Transient-failure handling for model calls. The Gemini free tier allows
+    # 15 requests/minute and one multi-agent turn is several, so a 429 mid-turn
+    # is routine rather than exceptional. Set retries to 0 to fail fast.
+    llm_max_retries: int = field(
+        default_factory=lambda: max(0, _int("SUPPLYCHAIN_LLM_MAX_RETRIES", 3))
+    )
+    llm_retry_base_delay: float = field(
+        default_factory=lambda: _float("SUPPLYCHAIN_LLM_RETRY_BASE_DELAY", 5.0)
     )
 
     # Conversation memory / history

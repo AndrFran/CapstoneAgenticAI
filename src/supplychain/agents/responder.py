@@ -14,6 +14,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from ..llm import get_llm
 from ..prompts import RESPONDER_PROMPT
+from ..resilience import call_with_retry, describe_failure
 from .base import text_of
 
 
@@ -75,11 +76,15 @@ def _brief(state: dict[str, Any]) -> str:
 def write_response(state: dict[str, Any]) -> str:
     """Generate the user-facing answer."""
     try:
-        message = get_llm("responder").invoke(
-            [
-                SystemMessage(content=RESPONDER_PROMPT),
-                HumanMessage(content=_brief(state)),
-            ]
+        model = get_llm("responder")
+        message = call_with_retry(
+            lambda: model.invoke(
+                [
+                    SystemMessage(content=RESPONDER_PROMPT),
+                    HumanMessage(content=_brief(state)),
+                ]
+            ),
+            label="final response",
         )
         text = text_of(message)
         if text:
@@ -92,9 +97,13 @@ def write_response(state: dict[str, Any]) -> str:
                 for agent, f in findings.items()
             )
             return (
-                "I could not compose the final summary, but here is what the "
-                f"analysis found:\n\n{joined}"
+                "I could not compose the final summary because "
+                f"{describe_failure(exc)}, but here is what the analysis "
+                f"found:\n\n{joined}"
             )
-        return f"Sorry - I could not complete that request ({exc.__class__.__name__})."
+        return (
+            f"Sorry - I could not complete that request because "
+            f"{describe_failure(exc)}. Please try again in a moment."
+        )
 
     return "I was not able to produce an answer for that request."

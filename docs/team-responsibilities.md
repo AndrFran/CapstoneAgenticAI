@@ -123,6 +123,8 @@ safety stock.
 
 ## Team Member 4 — Recovery & Supervisor Agent Engineer
 
+**Status: delivered** (branch `feat/tm4-supervisor-recovery`).
+
 **Owns**
 
 | File | What is yours |
@@ -144,6 +146,50 @@ cross-agent error handling.
 
 If you change `state.SupplyChainState`, tell the other three — it is the
 contract everyone codes against.
+
+### What was built
+
+**LangGraph workflow** — `START → intake → supervisor ⇄ five workers →
+respond → END`, with `recovery → approval → supervisor` for writes. The
+supervisor is the only node that routes; `respond` is the single exit.
+
+**Human-in-the-loop, structurally.** The Recovery Agent has no write tools at
+all — only `propose_*` tools that describe an action. `base.find_pending_proposal`
+reads the proposal back out of the agent's own tool calls, the graph routes to
+`approval`, and `interrupt()` hands it to a human. `actions.py` is the only
+module that writes, and it is reachable only from that node. The node is
+side-effect-free before the interrupt, because LangGraph re-enters it on resume.
+
+**Routing that cannot be talked out of.** Two structural clamps sit between the
+router's choice and the edge taken, because a routing rule in a prompt is a
+suggestion: a read-only status query never reaches recovery and stops after two
+specialists, and no agent that failed this turn is dispatched again. Plus the
+hop-limit loop guard.
+
+**Cross-agent error handling.** This was the gap. Intake fell back to regex,
+the supervisor fell back to its routing table and the responder caught its own
+failure — but a worker agent raising propagated all the way out of
+`graph.invoke` and reached the operator as a class name, discarding the work
+every earlier agent had already done. Now `graph._worker_failure` turns it into
+a finding (`failed: True`), the supervisor moves on, and the responder is told
+what is missing so the answer says so. Underneath, `resilience.call_with_retry`
+waits out the transient failures first — chiefly `429 RESOURCE_EXHAUSTED`,
+which on the free tier is the normal failure rather than an edge case.
+
+**Fixed: gated turns lost their trace.** `resume_turn` never called
+`record_turn`, and `conversation_turns` pairs metadata to assistant messages by
+position — so a conversation that passed through the approval gate did not
+merely lose one turn's trace, it slid every later trace onto the wrong answer,
+and showed `0 turns` in the sidebar. `tests/test_runner.py` pins both.
+
+### Notes for whoever picks this up
+
+- A worker returning findings with `failed: True` is a contained failure, not a
+  bug. `graph.failed_agents(state)` lists them.
+- Add a clamp to `_apply_routing_policy`, not to `supervisor_node` — the list
+  is ordered by precedence and the first override wins.
+- `resilience.is_transient` is deny-by-default: an unrecognised error is
+  treated as permanent. Add markers rather than inverting that.
 
 ## Shared by all four
 
