@@ -147,6 +147,7 @@ token cost predictable.
 | `config.py` | The only module that reads `os.environ`. |
 | `prompts.py` | Every system prompt, plus `PROMPT_VERSIONS` and `CHANGELOG`. Bump the version in the same commit as a prompt change — `observability.run_config` ships versions to LangSmith so runs can be compared. |
 | `memory.py` | Conversation memory (the checkpointer) and history (the conversation index). The only module that knows a checkpointer exists. |
+| `observability.py` | Tracing config, plus `traced()` and `run_name()`. LangChain traces model and tool calls and LangGraph traces nodes; **everything deterministic in between is invisible unless decorated with `@traced`** — which here is most of the interesting logic. A trace showing only model calls implies the model is doing work it is not. |
 | `ui/` | Presentation only. `theme.py` takes plain data and returns HTML; `overview.py` and `visuals.py` read through `access.py` and the tool layer to rebuild the numbers a panel needs. Nothing in `ui/` imports the graph or the model. |
 
 `runner.py` (`run_turn` / `resume_turn` / `health`, plus the conversation

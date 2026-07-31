@@ -122,7 +122,9 @@ def _state_digest(state: dict[str, Any]) -> str:
 def decide_route(state: dict[str, Any]) -> tuple[RouteDecision, bool]:
     """Pick the next agent. Returns the decision and whether the LLM produced it."""
     try:
-        model = get_structured_llm("supervisor").with_structured_output(RouteDecision)
+        model = get_structured_llm("supervisor").with_structured_output(
+            RouteDecision
+        ).with_config({"run_name": "route decision"})
         decision = model.invoke(
             [
                 SystemMessage(content=SUPERVISOR_PROMPT),

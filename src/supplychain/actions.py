@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 
 from .data import access
+from .observability import traced
 
 
 def describe(action: dict[str, Any]) -> str:
@@ -40,6 +41,9 @@ def describe(action: dict[str, Any]) -> str:
     return f"Unknown action: {kind}"
 
 
+# The only write in the system, and the one step a reviewer most wants to find
+# in a trace: what was applied, to what, and with whose approval.
+@traced("apply approved action", run_type="tool")
 def execute(action: dict[str, Any]) -> dict[str, Any]:
     """Apply an approved action. Returns a result record for the state."""
     kind = action.get("action")

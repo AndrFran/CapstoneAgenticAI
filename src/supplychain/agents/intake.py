@@ -30,6 +30,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from ..data import access
 from ..llm import get_structured_llm
 from ..memory import ENTITY_FIELDS, most_recent, update_entities
+from ..observability import traced
 from ..prompts import INTAKE_PROMPT, prompt_version
 from ..state import IntakeResult
 
@@ -141,6 +142,7 @@ QUANTITY_PATTERN = re.compile(
 )
 
 
+@traced("normalise identifiers")
 def extract_identifiers(text: str) -> dict[str, list[str]]:
     """Every identifier in the text, canonicalised. Never raises."""
     return {
@@ -188,6 +190,7 @@ def _known_ids(spec: IdentifierSpec) -> list[str]:
         return []
 
 
+@traced("validate identifiers")
 def validate_identifiers(
     identifiers: dict[str, list[str]],
 ) -> tuple[dict[str, list[str]], list[dict[str, Any]]]:
@@ -264,7 +267,9 @@ def _llm_intake(user_request: str, history: list[Any]) -> IntakeResult | None:
         HumanMessage(content=f"Current request:\n{user_request}"),
     ]
     try:
-        model = get_structured_llm("intake").with_structured_output(IntakeResult)
+        model = get_structured_llm("intake").with_structured_output(
+            IntakeResult
+        ).with_config({"run_name": "classify request"})
         result = model.invoke(messages)
     except Exception:  # noqa: BLE001 - degrade to the deterministic path
         return None
@@ -326,6 +331,7 @@ def _merge_identifiers(
     return {k: v for k, v in merged.items() if v}
 
 
+@traced("resolve from entity memory")
 def _carry_forward(
     identifiers: dict[str, list[str]],
     entities: dict[str, list[str]] | None,

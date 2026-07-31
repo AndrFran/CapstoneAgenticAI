@@ -27,6 +27,7 @@ from langchain.agents import create_agent
 from langchain_core.tools import BaseTool
 
 from ..llm import get_llm
+from ..observability import traced
 from ..prompts import PROMPTS
 from ..tools import (
     INCIDENT_TOOLS,
@@ -130,6 +131,7 @@ def first_tool_result(messages: Iterable[AnyMessage], tool_name: str) -> Any | N
     return None
 
 
+@traced("extract write proposal")
 def find_pending_proposal(messages: Iterable[AnyMessage]) -> dict[str, Any] | None:
     """Return the last write-action proposal an agent made, if any.
 
@@ -137,6 +139,10 @@ def find_pending_proposal(messages: Iterable[AnyMessage]) -> dict[str, Any] | No
     letting a tool mutate shared state, the graph reads the proposal back out
     of the agent's own tool calls - so the human-in-the-loop gate cannot be
     bypassed by the model.
+
+    Traced because this is where the human-in-the-loop gate is actually
+    decided; without it the trace jumps from a recovery agent's tool call
+    straight to an interrupt with nothing showing why.
     """
     proposal = None
     for call in tool_calls_in(messages):

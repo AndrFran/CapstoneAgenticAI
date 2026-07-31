@@ -75,7 +75,8 @@ def _brief(state: dict[str, Any]) -> str:
 def write_response(state: dict[str, Any]) -> str:
     """Generate the user-facing answer."""
     try:
-        message = get_llm("responder").invoke(
+        model = get_llm("responder").with_config({"run_name": "compose answer"})
+        message = model.invoke(
             [
                 SystemMessage(content=RESPONDER_PROMPT),
                 HumanMessage(content=_brief(state)),
