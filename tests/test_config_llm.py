@@ -35,7 +35,7 @@ def isolated_settings(monkeypatch):
 
 def test_defaults():
     settings = config.get_settings()
-    assert settings.model == "gemini-3.1-flash-lite"
+    assert settings.model == "gemini-3.5-flash-lite"
     assert settings.reasoning_effort == "medium"
     assert settings.router_reasoning_effort == "low"
     assert settings.max_output_tokens == 4096

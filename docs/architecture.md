@@ -182,7 +182,7 @@ through LangChain 1.x's provider-agnostic `init_chat_model` in
 
 | Call site | Model | Reasoning effort | Output budget | Why |
 |---|---|---|---|---|
-| Worker agents, responder | `SUPPLYCHAIN_MODEL` (default `gemini-3.1-flash-lite`) | `SUPPLYCHAIN_REASONING_EFFORT` (default `medium`) | `SUPPLYCHAIN_MAX_OUTPUT_TOKENS` (4096) | Multi-step tool reasoning. |
+| Worker agents, responder | `SUPPLYCHAIN_MODEL` (default `gemini-3.5-flash-lite`) | `SUPPLYCHAIN_REASONING_EFFORT` (default `medium`) | `SUPPLYCHAIN_MAX_OUTPUT_TOKENS` (4096) | Multi-step tool reasoning. |
 | Intake, supervisor | same model | `SUPPLYCHAIN_ROUTER_REASONING_EFFORT` (default `low`) | ≤ 2048 | Short extraction/classification steps on the critical path of every turn. |
 
 `reasoning_effort` (`minimal` / `low` / `medium` / `high`) is how

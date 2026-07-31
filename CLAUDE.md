@@ -292,7 +292,7 @@ offers.
 All environment-driven via `config.Settings`; see `.env.example`. Notable:
 
 - `GOOGLE_API_KEY` (or `GEMINI_API_KEY`) — required for any live call.
-- `SUPPLYCHAIN_MODEL` — default `gemini-3.1-flash-lite`; `gemini-3.6-flash` is
+- `SUPPLYCHAIN_MODEL` — default `gemini-3.5-flash-lite`; `gemini-3.6-flash` is
   the step up for harder agentic reasoning.
 - `SUPPLYCHAIN_REASONING_EFFORT` (`medium`) / `SUPPLYCHAIN_ROUTER_REASONING_EFFORT`
   (`low`) — map to Gemini's `thinking_level`. Invalid values fall back to the

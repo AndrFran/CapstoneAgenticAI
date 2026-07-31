@@ -53,7 +53,7 @@ annotated list.
 |---|---|---|
 | `GOOGLE_API_KEY` | — | **Required** unless using Vertex AI (below). Get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). `GEMINI_API_KEY` is also accepted. |
 | `GOOGLE_GENAI_USE_VERTEXAI` | `false` | Set `true` to use the Vertex AI backend instead of an API key. Needs `GOOGLE_CLOUD_PROJECT` (+ optional `GOOGLE_CLOUD_LOCATION`, default `global`) and `gcloud auth application-default login`. |
-| `SUPPLYCHAIN_MODEL` | `gemini-3.1-flash-lite` | Model for every agent. `gemini-3.6-flash` is the step up for harder agentic reasoning. |
+| `SUPPLYCHAIN_MODEL` | `gemini-3.5-flash-lite` | Model for every agent. `gemini-3.6-flash` is the step up for harder agentic reasoning. The free-tier daily quota is per model, so switching gives a fresh allowance. |
 | `SUPPLYCHAIN_REASONING_EFFORT` | `medium` | Worker-agent thinking depth: `minimal` · `low` · `medium` · `high`. |
 | `SUPPLYCHAIN_ROUTER_REASONING_EFFORT` | `low` | Thinking depth for intake extraction and routing. |
 | `SUPPLYCHAIN_MAX_OUTPUT_TOKENS` | `4096` | Max output tokens per call. |

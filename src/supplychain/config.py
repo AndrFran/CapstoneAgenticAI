@@ -92,7 +92,7 @@ class Settings:
         default_factory=lambda: os.getenv("GOOGLE_CLOUD_PROJECT") or None
     )
     model: str = field(
-        default_factory=lambda: os.getenv("SUPPLYCHAIN_MODEL", "gemini-3.1-flash-lite")
+        default_factory=lambda: os.getenv("SUPPLYCHAIN_MODEL", "gemini-3.5-flash-lite")
     )
     reasoning_effort: str = field(
         default_factory=lambda: _effort("SUPPLYCHAIN_REASONING_EFFORT", "medium")
