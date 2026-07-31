@@ -22,6 +22,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from supplychain.observability import tracing_status  # noqa: E402
+from supplychain.progress import PIPELINE, TurnProgress  # noqa: E402
 from supplychain.runner import (  # noqa: E402
     TurnResult,
     conversation_turns,
@@ -32,7 +33,7 @@ from supplychain.runner import (  # noqa: E402
     new_thread_id,
     rename_conversation,
     resume_turn,
-    run_turn,
+    stream_turn,
 )
 from supplychain.ui import theme, visuals  # noqa: E402
 from supplychain.ui.overview import Snapshot, fleet_snapshot  # noqa: E402
@@ -692,10 +693,25 @@ def main() -> None:
         )
         st.rerun()
 
-    with st.chat_message("assistant"), st.spinner("Routing to the right agents..."):
+    with st.chat_message("assistant"):
+        panel = st.empty()
+        progress = TurnProgress()
+
+        def show(event) -> None:
+            """Repaint the live panel.
+
+            Called synchronously from inside the graph run, which is what lets
+            the display move mid-node instead of waiting for a 20-second
+            recovery step to finish.
+            """
+            progress.apply(event)
+            panel.html(theme.live_progress(progress, PIPELINE))
+
+        panel.html(theme.live_progress(progress, PIPELINE))
         try:
-            result = run_turn(prompt, st.session_state.thread_id)
+            result = stream_turn(prompt, st.session_state.thread_id, on_event=show)
         except Exception as exc:  # noqa: BLE001 - surface, never crash the UI
+            panel.empty()
             st.session_state.history.append(
                 {
                     "role": "assistant",
@@ -705,6 +721,7 @@ def main() -> None:
             )
             st.rerun()
         else:
+            panel.empty()
             handle_result(result)
     st.rerun()
 

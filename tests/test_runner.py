@@ -53,6 +53,18 @@ class ScriptedGraph:
         self.state["messages"] = [*self.state["messages"], AIMessage(content=answer)]
         return {}
 
+    def stream(self, payload, config=None, stream_mode=None):  # noqa: ANN001
+        """Yield per-node updates the way LangGraph does, then finish."""
+        gated = self.gate_next
+        result = self.invoke(payload, config)
+        yield {"intake": {"request": {}}}
+        yield {"supervisor": {"next_agent": "shipment"}}
+        yield {"shipment": {"findings": {}}}
+        if gated:
+            yield {"__interrupt__": result["__interrupt__"]}
+        else:
+            yield {"respond": {"final_response": self.state.get("final_response")}}
+
     def get_state(self, _config):  # noqa: ANN001 - test double
         return FakeSnapshot(dict(self.state))
 
@@ -177,6 +189,69 @@ def test_a_later_message_does_not_rename_the_conversation(monkeypatch):
     runner.run_turn("and the supplier?", "t-title2")
 
     assert runner.get_conversation("t-title2").title == first
+
+
+# ---------------------------------------------------------------------------
+# Streaming
+# ---------------------------------------------------------------------------
+
+
+def test_streaming_reports_each_agent_as_it_finishes(monkeypatch):
+    install(monkeypatch)
+    seen = []
+
+    turn = runner.stream_turn(
+        "where is SHP-2026-0002?", "t-stream", on_event=seen.append
+    )
+
+    assert turn.answer
+    names = [e.name for e in seen if e.kind == "agent_done"]
+    assert names == ["intake", "supervisor", "shipment", "respond"]
+
+
+def test_streaming_records_the_turn_like_run_turn(monkeypatch):
+    install(monkeypatch)
+    runner.stream_turn("where is SHP-2026-0002?", "t-stream2")
+
+    metas = memory.get_store().turn_meta("t-stream2")
+    assert len(metas) == 1
+    assert metas[0]["severity"] == "high"
+
+
+def test_streaming_surfaces_an_approval_gate(monkeypatch):
+    """The interrupt arrives as a stream update, not as a return value."""
+    graph = install(monkeypatch)
+    graph.gate_next = True
+
+    turn = runner.stream_turn("raise an incident", "t-stream3")
+
+    assert turn.awaiting_approval is True
+    assert turn.approval_request["action"] == "create_incident"
+    # Nothing recorded until the human decides.
+    assert memory.get_store().turn_meta("t-stream3") == []
+
+
+def test_streaming_registers_the_conversation(monkeypatch):
+    install(monkeypatch)
+    runner.stream_turn("Which shipments are delayed right now?", "t-stream4")
+
+    record = runner.get_conversation("t-stream4")
+    assert record is not None and "delayed" in record.title.lower()
+
+
+def test_streaming_clears_the_retry_reporter_afterwards(monkeypatch):
+    """A stale reporter would push events into a dead Streamlit placeholder."""
+    from supplychain import resilience
+
+    install(monkeypatch)
+    runner.stream_turn("hello", "t-stream5", on_event=lambda _e: None)
+
+    assert resilience._RETRY_REPORTER is None
+
+
+def test_streaming_works_without_a_listener(monkeypatch):
+    install(monkeypatch)
+    assert runner.stream_turn("hello", "t-stream6").answer
 
 
 def test_conversation_turns_skips_empty_messages(monkeypatch):

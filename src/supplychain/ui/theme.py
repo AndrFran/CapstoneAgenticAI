@@ -384,6 +384,69 @@ button, [data-testid="stExpander"] summary, .nr-chip, .nr-card {{
   letter-spacing: 0.08em; color: var(--nr-faint); margin-top: 0.1rem;
 }}
 
+/* ------------------------------------------------------- live progress --- */
+
+.nr-live-panel {{
+  border: 1px solid var(--nr-border); border-left: 3px solid var(--nr-accent);
+  border-radius: 0.9rem; background: var(--nr-surface);
+  padding: 0.85rem 1.05rem; margin: 0.2rem 0 0.4rem;
+}}
+.nr-live-head {{
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.5rem; margin-bottom: 0.6rem;
+}}
+.nr-live-title {{
+  display: flex; align-items: center; gap: 0.45rem;
+  font-size: var(--nr-fs-sm); font-weight: 600;
+}}
+.nr-live-clock {{
+  font-size: var(--nr-fs-xs); color: var(--nr-faint);
+  font-variant-numeric: tabular-nums;
+}}
+
+.nr-step {{
+  display: flex; align-items: flex-start; gap: 0.55rem;
+  padding: 0.22rem 0; font-size: var(--nr-fs-sm);
+}}
+.nr-step__dot {{
+  width: 18px; height: 18px; border-radius: 99px; flex: 0 0 18px;
+  display: grid; place-items: center; margin-top: 0.05rem;
+  border: 1px solid var(--nr-border); background: var(--nr-surface-strong);
+  font-size: 0.7rem; color: var(--nr-faint);
+}}
+.nr-step--done .nr-step__dot {{
+  background: color-mix(in srgb, #34D399 22%, transparent);
+  border-color: color-mix(in srgb, #34D399 55%, transparent);
+  color: #34D399;
+}}
+.nr-step--active .nr-step__dot {{
+  background: color-mix(in srgb, var(--nr-accent) 22%, transparent);
+  border-color: var(--nr-accent); color: var(--nr-accent-text);
+  animation: nr-breathe 1.4s ease-in-out infinite;
+}}
+.nr-step--pending {{ opacity: 0.45; }}
+.nr-step__body {{ min-width: 0; }}
+.nr-step__name {{ font-weight: 500; }}
+.nr-step--active .nr-step__name {{ color: var(--nr-accent-text); font-weight: 600; }}
+.nr-step__tools {{
+  display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.2rem;
+}}
+.nr-step__tool {{
+  border: 1px solid var(--nr-border); border-radius: 0.45rem;
+  padding: 0.05rem 0.4rem; background: var(--nr-surface-strong);
+  font-family: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  font-size: 0.68rem; color: var(--nr-muted);
+}}
+@keyframes nr-breathe {{
+  50% {{ box-shadow: 0 0 0 4px color-mix(in srgb, var(--nr-accent) 18%, transparent); }}
+}}
+.nr-live-notice {{
+  margin-top: 0.5rem; padding: 0.35rem 0.55rem; border-radius: 0.5rem;
+  font-size: var(--nr-fs-xs);
+  border: 1px solid color-mix(in srgb, #FB923C 45%, transparent);
+  background: color-mix(in srgb, #FB923C 10%, transparent);
+}}
+
 /* ---------------------------------------------------- route chain (trace) - */
 
 .nr-chain {{ display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin: 0.2rem 0 0.7rem; }}
@@ -758,6 +821,60 @@ def shipment_lane(panel) -> str:
         "</div>"
         f'<div class="nr-tl__facts">{"".join(facts)}</div>'
         "</div>"
+    )
+
+
+def live_progress(progress, pipeline: tuple[str, ...]) -> str:
+    """The turn in flight: who has reported, who is working, on what.
+
+    Only agents that have run or are running are listed. Showing the whole
+    roster greyed out would imply every agent runs on every turn, which is the
+    opposite of what the supervisor is for.
+    """
+    seen = [name for name in pipeline if name in progress.done or name == progress.current]
+    rows = []
+    for name in seen:
+        glyph, label = AGENT_META.get(name, ("label", name.replace("_", " ")))
+        active = name == progress.current
+        state = "active" if active else "done"
+        mark = icon("more_horiz") if active else icon("check")
+        tools = "".join(
+            f'<span class="nr-step__tool">{_esc(tool)}</span>'
+            for tool in progress.tools_for(name)
+        )
+        rows.append(
+            f'<div class="nr-step nr-step--{state}">'
+            f'<span class="nr-step__dot">{mark}</span>'
+            '<span class="nr-step__body">'
+            f'<span class="nr-step__name">{icon(glyph)} {_esc(label)}</span>'
+            + (f'<span class="nr-step__tools">{tools}</span>' if tools else "")
+            + "</span></div>"
+        )
+
+    if not rows:
+        rows.append(
+            '<div class="nr-step nr-step--active">'
+            f'<span class="nr-step__dot">{icon("more_horiz")}</span>'
+            '<span class="nr-step__body"><span class="nr-step__name">'
+            "Reading the request…</span></span></div>"
+        )
+
+    notice = ""
+    if progress.notices:
+        notice = (
+            f'<div class="nr-live-notice">{icon("hourglass_top")} '
+            f"{_esc(progress.notices[-1])}</div>"
+        )
+
+    return (
+        '<div class="nr-live-panel">'
+        '<div class="nr-live-head">'
+        f'<span class="nr-live-title">{icon("network_node")}Working on it</span>'
+        f'<span class="nr-live-clock">{progress.elapsed:.0f}s</span>'
+        "</div>"
+        + "".join(rows)
+        + notice
+        + "</div>"
     )
 
 
