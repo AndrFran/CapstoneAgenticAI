@@ -158,6 +158,11 @@ What to look for specifically when reviewing a new run:
 - **Fallback paths taken.** `request.extracted_by == "regex"` means the intake
   structured-output call failed; `route_reason` ending in `(fallback policy)`
   means supervisor routing failed. Both are silent degradations — count them.
+- **Contained worker failures.** A finding carrying `failed: true` means that
+  agent died and the turn continued without it. Check the answer admits the
+  gap, and check `route_reason` for the agent not being retried. Since the
+  retry policy waits out `429`s first, one of these means either a permanent
+  error or a quota window longer than the back-off.
 - **Hop-limit hits.** `route_reason` mentioning the hop limit means the
   supervisor did not converge.
 - **Tool errors.** Tool results containing an `error` field, and whether the

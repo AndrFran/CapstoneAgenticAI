@@ -29,6 +29,7 @@ from langchain_core.tools import BaseTool
 from ..llm import get_llm
 from ..observability import traced
 from ..prompts import PROMPTS
+from ..resilience import call_with_retry
 from ..tools import (
     INCIDENT_TOOLS,
     INVENTORY_TOOLS,
@@ -253,7 +254,13 @@ def run_worker(name: str, state: dict[str, Any], task: str) -> dict[str, Any]:
         if part
     )
 
-    result = agent.invoke({"messages": [HumanMessage(content=briefing)]})
+    # A worker is the longest model call in the turn and the most likely to hit
+    # a rate limit. Waiting one quota window out is far cheaper than losing the
+    # work every other agent has already done.
+    result = call_with_retry(
+        lambda: agent.invoke({"messages": [HumanMessage(content=briefing)]}),
+        label=f"{name} agent",
+    )
     messages = result.get("messages", [])
 
     classification = first_tool_result(messages, "classify_incident_severity") or {}

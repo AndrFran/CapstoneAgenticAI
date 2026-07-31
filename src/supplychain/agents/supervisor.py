@@ -15,6 +15,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from ..llm import get_structured_llm
 from ..prompts import SUPERVISOR_PROMPT
+from ..resilience import call_with_retry
 from ..state import RouteDecision
 
 # Deterministic policy used when the routing LLM call fails, and as the
@@ -125,11 +126,14 @@ def decide_route(state: dict[str, Any]) -> tuple[RouteDecision, bool]:
         model = get_structured_llm("supervisor").with_structured_output(
             RouteDecision
         ).with_config({"run_name": "route decision"})
-        decision = model.invoke(
-            [
-                SystemMessage(content=SUPERVISOR_PROMPT),
-                HumanMessage(content=_state_digest(state)),
-            ]
+        decision = call_with_retry(
+            lambda: model.invoke(
+                [
+                    SystemMessage(content=SUPERVISOR_PROMPT),
+                    HumanMessage(content=_state_digest(state)),
+                ]
+            ),
+            label="supervisor routing",
         )
         if isinstance(decision, dict):
             decision = RouteDecision(**decision)

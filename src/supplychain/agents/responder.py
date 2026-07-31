@@ -14,6 +14,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from ..llm import get_llm
 from ..prompts import RESPONDER_PROMPT
+from ..resilience import call_with_retry, describe_failure
 from .base import text_of
 
 
@@ -45,7 +46,12 @@ def _brief(state: dict[str, Any]) -> str:
         lines.append("Agent findings:")
         for agent, finding in findings.items():
             summary = finding.get("summary") if isinstance(finding, dict) else finding
-            lines.append(f"\n[{agent}]\n{summary}")
+            # Flag a contained failure explicitly. Left to the summary prose
+            # alone, the model tended to promise it was retrying - nothing runs
+            # after this call, so that promise is never kept.
+            failed = isinstance(finding, dict) and finding.get("failed")
+            marker = " (COULD NOT COMPLETE - report this gap, do not retry)" if failed else ""
+            lines.append(f"\n[{agent}]{marker}\n{summary}")
 
     pending = state.get("pending_action")
     if pending:
@@ -76,11 +82,14 @@ def write_response(state: dict[str, Any]) -> str:
     """Generate the user-facing answer."""
     try:
         model = get_llm("responder").with_config({"run_name": "compose answer"})
-        message = model.invoke(
-            [
-                SystemMessage(content=RESPONDER_PROMPT),
-                HumanMessage(content=_brief(state)),
-            ]
+        message = call_with_retry(
+            lambda: model.invoke(
+                [
+                    SystemMessage(content=RESPONDER_PROMPT),
+                    HumanMessage(content=_brief(state)),
+                ]
+            ),
+            label="final response",
         )
         text = text_of(message)
         if text:
@@ -93,9 +102,13 @@ def write_response(state: dict[str, Any]) -> str:
                 for agent, f in findings.items()
             )
             return (
-                "I could not compose the final summary, but here is what the "
-                f"analysis found:\n\n{joined}"
+                "I could not compose the final summary because "
+                f"{describe_failure(exc)}, but here is what the analysis "
+                f"found:\n\n{joined}"
             )
-        return f"Sorry - I could not complete that request ({exc.__class__.__name__})."
+        return (
+            f"Sorry - I could not complete that request because "
+            f"{describe_failure(exc)}. Please try again in a moment."
+        )
 
     return "I was not able to produce an answer for that request."

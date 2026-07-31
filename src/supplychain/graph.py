@@ -29,6 +29,8 @@ from langgraph.types import interrupt
 from . import actions
 from .agents import analyse_request, decide_route, run_worker, write_response
 from .config import get_settings
+from .observability import traced
+from .resilience import describe_failure
 from .state import SupplyChainState, merge_findings
 
 WORKER_NODES = ("incident_analysis", "shipment", "inventory", "supplier", "recovery")
@@ -84,7 +86,7 @@ def supervisor_node(state: SupplyChainState) -> dict[str, Any]:
         }
 
     decision, from_llm = decide_route(dict(state))
-    target, override = _constrain_read_only(state, decision.next_agent)
+    target, override = _apply_routing_policy(state, decision.next_agent)
     return {
         "hops": hops,
         "next_agent": target,
@@ -131,11 +133,95 @@ def _constrain_read_only(
     return target, None
 
 
+def failed_agents(state: SupplyChainState) -> list[str]:
+    """Agents whose run died this turn (see ``_worker_failure``)."""
+    return [
+        name
+        for name, finding in (state.get("findings") or {}).items()
+        if isinstance(finding, dict) and finding.get("failed")
+    ]
+
+
+def _avoid_failed_agents(
+    state: SupplyChainState, target: str
+) -> tuple[str, str | None]:
+    """Never send work back to an agent that just failed.
+
+    The deterministic policy already skips anything in ``visited``, but the LLM
+    router sees the failure summary in its digest and may well read it as
+    "try again". A second attempt costs another model call and, when the cause
+    is a rate limit, fails for exactly the same reason.
+    """
+    failed = failed_agents(state)
+    if target in failed:
+        return "respond", (
+            f"The {target} agent failed this turn; answering with what the "
+            "other agents established rather than retrying it."
+        )
+    return target, None
+
+
+@traced("routing policy")
+def _apply_routing_policy(
+    state: SupplyChainState, target: str
+) -> tuple[str, str | None]:
+    """Structural limits on the router's choice, in precedence order.
+
+    A routing instruction in a prompt is a suggestion; these are edges.
+    """
+    for clamp in (_avoid_failed_agents, _constrain_read_only):
+        target, override = clamp(state, target)
+        if override:
+            return target, override
+    return target, None
+
+
+@traced("contained worker failure")
+def _worker_failure(name: str, state: SupplyChainState, exc: Exception) -> dict[str, Any]:
+    """Record a dead worker as a finding and let the turn carry on.
+
+    A worker is the one place in this graph that used to be able to kill a
+    whole turn: intake falls back to regex, the supervisor falls back to its
+    routing table and the responder catches its own failure, but an exception
+    here propagated through ``graph.invoke`` and reached the operator as a
+    class name. That is the wrong trade - by the time the third agent runs, two
+    others have already done useful work, and an answer built on partial
+    findings beats no answer at all.
+
+    So the failure becomes data, exactly like a failed tool call
+    (``tools/common.error``): the agent is marked visited so the supervisor
+    moves on instead of retrying it, and the responder is told what is missing
+    so it can say so rather than quietly answering with a hole in it.
+    """
+    reason = describe_failure(exc)
+    return {
+        "findings": merge_findings(
+            state.get("findings"),
+            {
+                name: {
+                    "summary": (
+                        f"This check could not be completed because {reason}. "
+                        "Its findings are missing from the answer below."
+                    ),
+                    "tool_calls": [],
+                    "failed": True,
+                    "error": type(exc).__name__,
+                }
+            },
+        ),
+        "visited": [*(state.get("visited") or []), name],
+    }
+
+
 def _worker_node(name: str):
     """Build the graph node for one worker agent."""
 
     def node(state: SupplyChainState) -> dict[str, Any]:
-        result = run_worker(name, dict(state), state.get("route_task", ""))
+        try:
+            result = run_worker(name, dict(state), state.get("route_task", ""))
+        except Exception as exc:  # noqa: BLE001 - contained, see _worker_failure
+            return _worker_failure(name, state, exc)
+
         update: dict[str, Any] = {
             "findings": merge_findings(
                 state.get("findings"),

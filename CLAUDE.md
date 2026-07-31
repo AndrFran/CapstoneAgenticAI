@@ -18,7 +18,7 @@ A `.venv` exists at the repo root. On Windows PowerShell, prefix with
 `.\.venv\Scripts\python.exe -m` if it is not activated.
 
 ```bash
-pytest                                   # 317 tests, no API key needed
+pytest                                   # 395 tests, no API key needed
 pytest tests/test_tools.py               # one file
 pytest tests/test_tools.py::test_track_shipment_returns_full_record
 pytest -k "severity or transfer"         # by name
@@ -26,6 +26,8 @@ pytest -o addopts="" --tb=short          # pyproject sets -q; this restores the 
 pytest tests/test_live_agents.py --live  # 8 real Gemini calls; needs GOOGLE_API_KEY
 
 python scripts/smoke_test.py             # data + all 34 tools + graph compile, no API key
+python scripts/system_test.py            # 33 end-to-end checks on the live system (needs a key)
+python scripts/system_test.py --pace 20  # free tier: 15 req/min
 python scripts/generate_mock_data.py     # regenerate the committed JSON fixtures
 python scripts/run_eval_conversations.py # 12 traced conversations + latency stats (needs keys)
 python scripts/run_eval_conversations.py --case delay_impact   # one case
@@ -70,13 +72,26 @@ to any of them silently breaks multi-turn conversations: the hop limit exhausts
 after a few turns, and turn 2 gets answered with turn 1's findings still
 attached.
 
-**4. Two deterministic degradation paths exist and are load-bearing.** If the
-structured-output call fails, `agents/intake._regex_intake` extracts identifiers
-by regex, and `agents/supervisor._fallback_decision` applies a fixed routing
-table. Both surface in the result (`request.extracted_by`, `route_reason` ending
-in `(fallback policy)`). `test_fallback_policy_terminates_from_every_state`
-walks the fallback table to exhaustion for every incident type — keep it
-terminating.
+**4. No single model call can kill a turn.** Four degradation paths, all
+load-bearing:
+
+| Call | If it fails |
+|---|---|
+| Intake structured output | `agents/intake._regex_intake` extracts by regex (`request.extracted_by == "regex"`) |
+| Supervisor routing | `agents/supervisor._fallback_decision` applies a fixed table (`route_reason` ends `(fallback policy)`) |
+| A worker agent | `graph._worker_failure` records it as a finding with `failed: True`; the turn continues without it |
+| The responder | `agents/responder.write_response` returns the raw findings instead |
+
+Every one of them surfaces in the result rather than hiding — an answer built
+on partial findings must say what is missing.
+`test_fallback_policy_terminates_from_every_state` walks the routing table to
+exhaustion for every incident type; keep it terminating.
+
+Transient failures are retried before any of that applies:
+`resilience.call_with_retry` waits out `429`/`503`/timeouts, honouring the
+delay the API suggests. It retries **only** what is positively identified as
+transient — a missing key or a malformed request fails on the first attempt,
+which is what stops the no-key test suite from sitting through back-offs.
 
 **5. Tool parameter types are constrained by Gemini's function-calling schema.**
 Scalars and lists of scalars only (`str`, `int`, `float`, `bool`, `list[str]`,
@@ -148,6 +163,8 @@ token cost predictable.
 | `prompts.py` | Every system prompt, plus `PROMPT_VERSIONS` and `CHANGELOG`. Bump the version in the same commit as a prompt change — `observability.run_config` ships versions to LangSmith so runs can be compared. |
 | `memory.py` | Conversation memory (the checkpointer) and history (the conversation index). The only module that knows a checkpointer exists. |
 | `observability.py` | Tracing config, plus `traced()` and `run_name()`. LangChain traces model and tool calls and LangGraph traces nodes; **everything deterministic in between is invisible unless decorated with `@traced`** — which here is most of the interesting logic. A trace showing only model calls implies the model is doing work it is not. |
+| `progress.py` | Live turn events. A callback handler, **not** a stream consumer: `graph.stream` reports a node only once it has finished, and `stream(subgraphs=True)` cannot see inside a worker because `run_worker` invokes it as a separately compiled graph. Callbacks reach both. Knows nothing about Streamlit — it takes a `sink`. |
+| `resilience.py` | Retry policy for transient model failures. Provider-agnostic on purpose — it matches status names and codes rather than importing Google's exception classes, so changing provider cannot silently disable retries. |
 | `ui/` | Presentation only. `theme.py` takes plain data and returns HTML; `overview.py` and `visuals.py` read through `access.py` and the tool layer to rebuild the numbers a panel needs. Nothing in `ui/` imports the graph or the model. |
 
 `runner.py` (`run_turn` / `resume_turn` / `health`, plus the conversation
@@ -281,6 +298,8 @@ All environment-driven via `config.Settings`; see `.env.example`. Notable:
   (`low`) — map to Gemini's `thinking_level`. Invalid values fall back to the
   default rather than failing at request time.
 - `SUPPLYCHAIN_REQUIRE_APPROVAL` — set `false` only for unattended demos.
+- `SUPPLYCHAIN_LLM_MAX_RETRIES` (`3`) / `SUPPLYCHAIN_LLM_RETRY_BASE_DELAY` (`5`)
+  — transient-failure retries. `0` fails fast.
 - `SUPPLYCHAIN_MEMORY_BACKEND` (`sqlite` | `memory`) and
   `SUPPLYCHAIN_MEMORY_PATH` — conversation memory and history.
 - `SUPPLYCHAIN_ENTITY_MEMORY_DEPTH` (`3`) — how many identifiers of each kind

@@ -133,6 +133,151 @@ def test_the_clamp_handles_a_missing_request():
     assert (target, reason) == ("recovery", None)
 
 
+# ---------------------------------------------------------------------------
+# Cross-agent error handling
+# ---------------------------------------------------------------------------
+
+
+def _failed_state(agent: str = "shipment", **overrides):
+    state = {
+        "request": {"incident_type": "shipment_delay", "is_supported": True},
+        "visited": [agent],
+        "findings": {
+            agent: {"summary": "could not be completed", "failed": True},
+            "inventory": {"summary": "3 warehouses can cover it"},
+        },
+    }
+    state.update(overrides)
+    return state
+
+
+def test_a_dead_worker_becomes_a_finding_instead_of_an_exception(monkeypatch):
+    """One agent failing must not cost the work the others already did."""
+    from supplychain import graph
+
+    monkeypatch.setattr(
+        graph,
+        "run_worker",
+        lambda *_, **__: (_ for _ in ()).throw(RuntimeError("429 RESOURCE_EXHAUSTED")),
+    )
+    node = graph._worker_node("shipment")
+
+    update = node({"findings": {"inventory": {"summary": "earlier work"}}, "visited": ["inventory"]})
+
+    finding = update["findings"]["shipment"]
+    assert finding["failed"] is True
+    assert "rate limit" in finding["summary"]
+    # The earlier agent's work survives, and the dead one is not tried again.
+    assert update["findings"]["inventory"]["summary"] == "earlier work"
+    assert update["visited"] == ["inventory", "shipment"]
+
+
+def test_a_dead_worker_reports_the_cause_without_a_stack_trace():
+    from supplychain.graph import _worker_failure
+
+    update = _worker_failure("supplier", {}, RuntimeError("503 UNAVAILABLE"))
+    summary = update["findings"]["supplier"]["summary"]
+
+    assert "temporarily unavailable" in summary
+    assert "Traceback" not in summary and "503" not in summary
+    assert update["findings"]["supplier"]["error"] == "RuntimeError"
+
+
+def test_a_healthy_worker_is_unaffected(monkeypatch):
+    from supplychain import graph
+
+    monkeypatch.setattr(
+        graph,
+        "run_worker",
+        lambda *_, **__: {
+            "summary": "tracked it",
+            "tool_calls": [{"name": "track_shipment"}],
+            "severity": "high",
+            "pending_action": None,
+        },
+    )
+    update = graph._worker_node("shipment")({})
+
+    assert update["findings"]["shipment"]["tool_calls"] == ["track_shipment"]
+    assert "failed" not in update["findings"]["shipment"]
+    assert update["severity"] == "high"
+
+
+def test_the_responder_is_told_a_check_failed():
+    """Found by the end-to-end system test.
+
+    Given only the failure summary as prose, the model answered "I am
+    attempting to re-query the database" - nothing runs after the responder,
+    so that is a promise the system cannot keep. The brief now marks it.
+    """
+    from supplychain.agents.responder import _brief
+
+    brief = _brief(
+        {
+            "user_request": "status of SHP-2026-0002?",
+            "findings": {
+                "shipment": {"summary": "could not be completed", "failed": True},
+                "inventory": {"summary": "3 warehouses can cover it"},
+            },
+        }
+    )
+    assert "COULD NOT COMPLETE" in brief
+    assert "do not retry" in brief
+    # The healthy agent is not tarred with the same brush.
+    assert brief.count("COULD NOT COMPLETE") == 1
+    assert "3 warehouses can cover it" in brief
+
+
+def test_the_responder_brief_is_unmarked_when_nothing_failed():
+    from supplychain.agents.responder import _brief
+
+    brief = _brief({"user_request": "x", "findings": {"shipment": {"summary": "fine"}}})
+    assert "COULD NOT COMPLETE" not in brief
+
+
+def test_failed_agents_are_listed():
+    from supplychain.graph import failed_agents
+
+    assert failed_agents(_failed_state()) == ["shipment"]
+    assert failed_agents({"findings": {"shipment": {"summary": "fine"}}}) == []
+    assert failed_agents({}) == []
+
+
+def test_the_router_may_not_re_dispatch_a_failed_agent():
+    """The LLM sees the failure summary and may read it as "try again"."""
+    from supplychain.graph import _apply_routing_policy
+
+    target, reason = _apply_routing_policy(_failed_state(), "shipment")
+    assert target == "respond"
+    assert "failed this turn" in reason
+
+
+def test_a_failed_agent_does_not_block_the_others():
+    from supplychain.graph import _apply_routing_policy
+
+    target, reason = _apply_routing_policy(_failed_state(), "recovery")
+    assert (target, reason) == ("recovery", None)
+
+
+def test_the_failed_clamp_outranks_the_read_only_clamp():
+    """Both would fire; the failure reason is the one the operator needs."""
+    from supplychain.graph import _apply_routing_policy
+
+    state = _failed_state(
+        agent="shipment", request={"incident_type": "status_query", "is_supported": True}
+    )
+    target, reason = _apply_routing_policy(state, "shipment")
+    assert target == "respond"
+    assert "failed this turn" in reason
+
+
+def test_the_routing_policy_is_a_no_op_when_nothing_is_wrong():
+    from supplychain.graph import _apply_routing_policy
+
+    state = {"request": {"incident_type": "shipment_delay"}, "visited": [], "findings": {}}
+    assert _apply_routing_policy(state, "incident_analysis") == ("incident_analysis", None)
+
+
 def test_recovery_routes_to_approval_only_with_a_pending_action():
     assert route_from_recovery({"pending_action": None}) == "supervisor"
     assert (
