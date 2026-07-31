@@ -10,8 +10,25 @@ problems from model problems.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
+
+# Tracing off, before anything imports LangChain.
+#
+# This script calls the 34 tools directly rather than through an agent, so
+# there is no run for them to hang under: with tracing on, each one arrives in
+# LangSmith as its own *root* run. One smoke test buries a day of real
+# conversations under 34 orphans, and the project view is where the evaluation
+# evidence is read from. There is nothing to learn from tracing a deterministic
+# function anyway - that is what the assertions below are for.
+#
+# `config` calls load_dotenv(override=False), so setting these first means a
+# LANGSMITH_TRACING=true in .env cannot turn it back on. Set
+# SUPPLYCHAIN_SMOKE_TRACING=1 if you are debugging the tracer itself.
+if os.getenv("SUPPLYCHAIN_SMOKE_TRACING", "").lower() not in ("1", "true", "yes"):
+    os.environ["LANGSMITH_TRACING"] = "false"
+    os.environ["LANGCHAIN_TRACING_V2"] = "false"
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
