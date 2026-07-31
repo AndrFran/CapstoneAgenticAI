@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NovaRetail Group — AI Operations Assistant</title>
+<style>
+  :root {
+    --bg: #0e1420;
+    --surface: #16202f;
+    --surface2: #1c2839;
+    --text: #e8edf4;
+    --muted: #93a1b5;
+    --accent: #35c4b5;
+    --accent-soft: rgba(53, 196, 181, 0.14);
+    --warn: #e8b04b;
+    --bad: #e07a6a;
+    --border: #2a3850;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+  .deck { height: 100vh; position: relative; }
+  .slide {
+    position: absolute; inset: 0;
+    display: none;
+    padding: clamp(2rem, 5vh, 4rem) clamp(1.5rem, 8vw, 7rem);
+    flex-direction: column;
+    justify-content: center;
+    overflow-y: auto;
+  }
+  .slide.active { display: flex; }
+  .kicker {
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: clamp(0.7rem, 1.3vw, 0.85rem);
+    font-weight: 600;
+    margin-bottom: 0.9rem;
+  }
+  h1 { font-size: clamp(2rem, 5vw, 3.6rem); line-height: 1.1; font-weight: 700; }
+  h2 { font-size: clamp(1.5rem, 3.2vw, 2.4rem); line-height: 1.15; margin-bottom: 1.4rem; }
+  h3 { font-size: clamp(1rem, 1.8vw, 1.25rem); margin-bottom: 0.6rem; }
+  p, li { font-size: clamp(0.95rem, 1.7vw, 1.15rem); line-height: 1.55; color: var(--text); }
+  .sub { color: var(--muted); margin-top: 1rem; max-width: 48ch; }
+  ul { list-style: none; }
+  ul li { padding-left: 1.4em; position: relative; margin-bottom: 0.65em; }
+  ul li::before { content: "—"; position: absolute; left: 0; color: var(--accent); }
+  .muted { color: var(--muted); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1rem, 3vw, 2.5rem); }
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: clamp(0.8rem, 2vw, 1.6rem); }
+  @media screen and (max-width: 760px) {
+    .cols, .cols-3 { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: clamp(1rem, 2.2vw, 1.6rem);
+  }
+  .card h3 { color: var(--accent); }
+  table { border-collapse: collapse; width: 100%; margin: 0.5rem 0 1rem; }
+  th, td {
+    text-align: left;
+    padding: 0.55em 0.9em;
+    font-size: clamp(0.85rem, 1.5vw, 1.05rem);
+    border-bottom: 1px solid var(--border);
+  }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.08em; }
+  td.num { font-variant-numeric: tabular-nums; text-align: right; }
+  th.num { text-align: right; }
+  .accent { color: var(--accent); }
+  .warn { color: var(--warn); }
+  .bad { color: var(--bad); }
+  .pill {
+    display: inline-block; padding: 0.25em 0.8em; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent);
+    font-size: 0.85em; font-weight: 600; margin-bottom: 1rem;
+  }
+  .quote {
+    border-left: 3px solid var(--accent);
+    padding: 0.6em 0 0.6em 1.2em;
+    margin: 1.2rem 0;
+    color: var(--muted);
+    font-style: italic;
+    font-size: clamp(0.95rem, 1.7vw, 1.15rem);
+  }
+  code {
+    font-family: "Cascadia Code", Consolas, monospace;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.1em 0.45em;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1em 1.2em;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+  }
+  pre code { background: none; border: none; padding: 0; font-size: clamp(0.75rem, 1.3vw, 0.95rem); line-height: 1.45; }
+  .footnote { margin-top: 1.6rem; text-align: center;
+    font-size: 0.78rem; color: var(--muted); padding: 0 2rem; }
+  .table-wrap { overflow-x: auto; }
+
+  /* chrome */
+  .progress { position: fixed; top: 0; left: 0; height: 3px; background: var(--accent); transition: width 0.25s; z-index: 10; }
+  .nav {
+    position: fixed; bottom: 1rem; right: 1.2rem; z-index: 10;
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+  .nav button {
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    width: 2.4rem; height: 2.4rem; font-size: 1.1rem; cursor: pointer;
+  }
+  .nav button:hover { border-color: var(--accent); color: var(--accent); }
+  .counter { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+  .hint { position: fixed; bottom: 1.35rem; left: 1.4rem; color: var(--muted); font-size: 0.78rem; z-index: 10; }
+
+  .agent-map-figure {
+    width: 100%;
+    max-height: min(62vh, 560px);
+    margin: 0.2rem 0 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .agent-map-figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: min(62vh, 560px);
+    object-fit: contain;
+    object-position: center;
+  }
+
+  .flow-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0.8rem 0 1.2rem;
+  }
+  .flow-strip .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.35em 0.9em;
+    font-size: clamp(0.78rem, 1.3vw, 0.95rem);
+    font-weight: 600;
+  }
+  .flow-strip .step.hub {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .flow-strip .arrow {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .speaker {
+    display: inline-block;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.78em;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+
+  /* Print / PDF: one slide per 16:9 landscape page */
+  @media print {
+    @page { size: 1280px 720px; margin: 0; }
+    html, body { height: auto; overflow: visible; background: var(--bg); }
+    .deck { height: auto; }
+    .slide {
+      display: flex !important;
+      position: relative;
+      inset: auto;
+      width: 1280px;
+      height: 720px;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+      background: var(--bg);
+    }
+    .slide:last-child { page-break-after: auto; break-after: auto; }
+    .nav, .hint, .progress { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="deck" id="deck">
+
+  <!-- 1 · Title -->
+  <section class="slide">
+    <div class="kicker">GlobalLogic · Capstone · NovaRetail Supply Chain</div>
+    <h1>NovaRetail Group<br><span class="accent">AI Operations Assistant</span></h1>
+    <p class="sub">An AI-powered operational assistant for supply chain disruption management.</p>
+    <p class="muted" style="margin-top:2.2rem">31 July 2026 · Capstone MVP · Fictional client, simulated data</p>
+    <p style="margin-top:1.4rem; font-size:clamp(0.95rem, 1.6vw, 1.1rem)">
+      <span class="muted" style="text-transform:uppercase; letter-spacing:0.12em; font-size:0.78em; font-weight:600">Team</span><br>
+      Andriy Franko · Mykhailo Chaus · Pavlo Lohvinov
+    </p>
+  </section>
+
+  <!-- 2 · Problem & purpose -->
+  <section class="slide">
+    <div class="kicker">Context</div>
+    <h2>The problem it solves</h2>
+    <div class="cols">
+      <div class="card">
+        <h3>Today at NovaRetail</h3>
+        <p style="font-size:0.95em">150 stores · 8 warehouses · 300+ suppliers · ~5,000 shipments a day. When a shipment is late, stock runs short, or a supplier fails, ops jump across separate portals and coordinate recovery by hand.</p>
+      </div>
+      <div class="card">
+        <h3>Purpose of the assistant</h3>
+        <p style="font-size:0.95em">One place to ask in plain English — understand the incident, route to the right supply-chain function, pull live facts, and propose a recovery plan with a human still in control of writes.</p>
+      </div>
+    </div>
+    <div class="cols" style="margin-top:1.2rem">
+      <div>
+        <h3 style="color:var(--accent)">What ops can do</h3>
+        <ul style="font-size:0.95em">
+          <li>Track shipments and quantify delay impact</li>
+          <li>Check stock, shortages, and transfer options</li>
+          <li>Find and compare alternative suppliers</li>
+          <li>Raise incidents, escalate, and plan recovery</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="color:var(--accent)">What it opens for NovaRetail</h3>
+        <ul style="font-size:0.95em">
+          <li>Faster disruption response across teams</li>
+          <li>Unified visibility instead of portal-hopping</li>
+          <li>AI-assisted recovery with approval gates</li>
+          <li>Less manual coordination on every incident</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · Solution architecture (placeholder — Mykhailo Chaus) -->
+  <section class="slide">
+    <div class="kicker">Architecture</div>
+    <h2>Solution architecture</h2>
+    <div class="card" style="min-height:12rem; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; border-style:dashed;">
+      <p class="pill">Placeholder</p>
+      <p style="font-size:clamp(1.1rem, 2vw, 1.4rem); margin-top:0.4rem">Content to be added by <span class="accent">Mykhailo Chaus</span></p>
+      <p class="muted" style="margin-top:0.8rem; max-width:36ch">General system architecture — agents, graph flow, tool layer, and data path.</p>
+    </div>
+  </section>
+
+  <!-- 4 · Agent map (picture) -->
+  <section class="slide">
+    <div class="kicker">Multi-agent system</div>
+    <h2>Agent map</h2>
+    <figure class="agent-map-figure">
+      <img src="assets/agent-map.png" alt="LangGraph multi-agent map: Ops user to Intake to Supervisor, specialist workers, Approval HITL, Respond, and tools over the data layer">
+    </figure>
+    <p class="muted" style="margin-top:0.7rem; font-size:0.9rem">
+      Yellow <span class="warn">Approval</span> is human-in-the-loop: Recovery only <em>proposes</em> writes — nothing lands until an operator Approves.
+      Numbers come from the <span class="accent">tool layer</span>, not from the model’s prose.
+    </p>
+  </section>
+
+  <!-- 5 · Live demo (Andriy Franko) -->
+  <section class="slide">
+    <div class="kicker">Live demo</div>
+    <h2>Streamlit walkthrough</h2>
+    <div class="card" style="min-height:12rem; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; border-style:dashed;">
+      <p class="pill">Live demo</p>
+      <p style="font-size:clamp(1.1rem, 2vw, 1.4rem); margin-top:0.4rem">Presented by <span class="accent">Andriy Franko</span></p>
+      <p class="muted" style="margin-top:0.8rem; max-width:42ch">Switch to the Streamlit ops console — ask a real question, show the workflow trace, and (if a write is proposed) the Approve / Reject gate.</p>
+    </div>
+  </section>
+
+  <!-- 6 · Andriy Franko -->
+  <section class="slide">
+    <div class="kicker">Delivery · TM1</div>
+    <p class="speaker">Andriy Franko</p>
+    <h2>Intake, incidents &amp; the ops console</h2>
+    <div class="cols">
+      <div class="card">
+        <h3>What he built</h3>
+        <ul style="font-size:0.95em">
+          <li><strong>Request Intake Agent</strong> — classify intent, normalise IDs, validate against data, carry entity memory</li>
+          <li><strong>Incident Analysis Agent</strong> — facts, damage assessment, rule-based severity, duplicate check</li>
+          <li><strong>Streamlit chat UI</strong> — conversations, workflow trace, export</li>
+          <li><strong>Memory &amp; history</strong> — SQLite checkpointer so threads and approvals survive restarts</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Why it matters</h3>
+        <ul style="font-size:0.95em">
+          <li>Ops type <code>shp 2026 2</code> — intake turns it into <code>SHP-2026-0002</code></li>
+          <li>“That shipment” resolves from conversation memory on later turns</li>
+          <li>Severity stays a rule engine, not model guesswork</li>
+          <li><strong>HITL in the UI</strong> — Approve executes the write; Reject changes nothing</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · Mykhailo Chaus -->
+  <section class="slide">
+    <div class="kicker">Delivery · TM2</div>
+    <p class="speaker">Mykhailo Chaus</p>
+    <h2>Shipments, impact &amp; the big picture</h2>
+    <div class="cols">
+      <div class="card">
+        <h3>What he built</h3>
+        <ul style="font-size:0.95em">
+          <li><strong>Shipment Agent</strong> — ReAct worker over nine deterministic tools</li>
+          <li>Track status, quantify delays, find affected orders &amp; stores</li>
+          <li>Delay backlog · route checks &amp; alternates · mock fixtures</li>
+          <li><strong>Solution architecture</strong> narrative for the team (previous slides)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Why it matters</h3>
+        <ul style="font-size:0.95em">
+          <li>Answers: <em>where is it, and who is hit?</em></li>
+          <li>Tools return exact numbers from fixtures — the LLM routes and explains, it does not invent stock or ETAs</li>
+          <li>Bad IDs come back as JSON errors with hints — the agent self-corrects</li>
+          <li>Clean shipment findings feed the next specialists</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · Pavlo Lohvinov — handoff slice (not a second agent map) -->
+  <section class="slide">
+    <div class="kicker">Delivery · TM3</div>
+    <p class="speaker">Pavlo Lohvinov</p>
+    <h2>Inventory, supplier &amp; the handoff</h2>
+    <div class="cols">
+      <div class="card">
+        <h3>His agents &amp; tools</h3>
+        <ul style="font-size:0.95em">
+          <li><strong>Inventory</strong> — stock, shortages, required qty, transfers (6 tools)</li>
+          <li><strong>Supplier</strong> — availability, alternatives, compare, landed cost (6 tools)</li>
+          <li>Invariants: <code>available = on_hand − reserved</code>; transfers never breach donor safety stock</li>
+          <li>Suspended suppliers are never offered as available</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Cross-agent handoff</h3>
+        <ul style="font-size:0.95em">
+          <li>Inventory emits <code>remaining_gap</code> / <code>fully_covered</code></li>
+          <li>Supplier uses that gap as buy quantity — or says <em>missing quantity — cannot cost</em></li>
+          <li>Recovery prefers transfer when covered; otherwise the recommended supplier + landed cost</li>
+          <li>Read-only workers — writes stay behind the approval gate</li>
+        </ul>
+      </div>
+    </div>
+    <p class="quote" style="margin-top:1.2rem">His job in the loop: turn “we’re short” into a cover plan the recovery step can act on.</p>
+  </section>
+
+  <!-- 8 · LangGraph tracing (placeholder — Andriy Franko) -->
+  <section class="slide">
+    <div class="kicker">Observability</div>
+    <h2>LangGraph tracing</h2>
+    <div class="card" style="min-height:12rem; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; border-style:dashed;">
+      <p class="pill">Placeholder</p>
+      <p style="font-size:clamp(1.1rem, 2vw, 1.4rem); margin-top:0.4rem">Live walkthrough by <span class="accent">Andriy Franko</span></p>
+      <p class="muted" style="margin-top:0.8rem; max-width:40ch">LangSmith traces over the LangGraph run — hops, tool calls, latency, and prompt versions.</p>
+    </div>
+  </section>
+
+  <!-- 9 · Next -->
+  <section class="slide">
+    <div class="kicker">Roadmap</div>
+    <h2>What's next</h2>
+    <div class="table-wrap"><table>
+      <tr><th>Item</th><th>Capability</th><th>Status</th></tr>
+      <tr><td><strong>MVP</strong></td><td>Multi-agent disruption assistant · HITL · conversation memory</td><td class="accent">✓ Done</td></tr>
+      <tr><td><strong>Durable memory</strong></td><td>Postgres checkpointer across restarts and replicas</td><td class="muted">Planned</td></tr>
+      <tr><td><strong>Proactive monitor</strong></td><td>Watch routes &amp; stock; raise incidents before ops ask</td><td class="muted">Planned</td></tr>
+      <tr><td><strong>Notifications</strong></td><td>Email / Teams as approved write actions</td><td class="muted">Planned</td></tr>
+      <tr><td><strong>RBAC</strong></td><td>Who may approve which write actions</td><td class="muted">Planned</td></tr>
+    </table></div>
+    <p class="muted" style="margin-top:1rem; font-size:0.95rem">
+      <strong class="accent">Quality:</strong> ~370 hermetic pytest tests + smoke test — no API key required.
+    </p>
+    <p class="quote" style="margin-top:1.2rem">Recommendation: the structural rails — supervisor loop, propose-only recovery, deterministic tools — are ready to grow onto real APIs without rewriting the agents.</p>
+  </section>
+
+  <!-- 10 · Q&A -->
+  <section class="slide">
+    <div class="kicker">Close</div>
+    <h1>Questions<span class="accent">?</span></h1>
+    <p class="sub">Happy to walk through any agent, tool, or design decision.</p>
+    <p class="muted" style="margin-top:2.5rem">Andriy Franko · Mykhailo Chaus · Pavlo Lohvinov</p>
+  </section>
+
+</div>
+
+<div class="nav">
+  <span class="counter" id="counter">1 / 11</span>
+  <button id="prev" aria-label="Previous slide">‹</button>
+  <button id="next" aria-label="Next slide">›</button>
+</div>
+<div class="hint">← → to navigate</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  let i = 0;
+  const counter = document.getElementById('counter');
+  const progress = document.getElementById('progress');
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, k) => s.classList.toggle('active', k === i));
+    counter.textContent = (i + 1) + ' / ' + slides.length;
+    progress.style.width = ((i + 1) / slides.length * 100) + '%';
+    if (location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
+  }
+  document.getElementById('prev').onclick = () => show(i - 1);
+  document.getElementById('next').onclick = () => show(i + 1);
+  document.addEventListener('keydown', e => {
+    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(slides.length - 1);
+  });
+  let touchX = null;
+  document.addEventListener('touchstart', e => touchX = e.touches[0].clientX);
+  document.addEventListener('touchend', e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) show(i + (dx < 0 ? 1 : -1));
+    touchX = null;
+  });
+  show(parseInt(location.hash.slice(1), 10) - 1 || 0);
+</script>
+</body>
+</html>
