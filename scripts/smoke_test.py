@@ -14,28 +14,15 @@ import os
 import sys
 from pathlib import Path
 
-# Tracing off, before anything imports LangChain.
-#
-# This script calls the 34 tools directly rather than through an agent, so
-# there is no run for them to hang under: with tracing on, each one arrives in
-# LangSmith as its own *root* run. One smoke test buries a day of real
-# conversations under 34 orphans, and the project view is where the evaluation
-# evidence is read from. There is nothing to learn from tracing a deterministic
-# function anyway - that is what the assertions below are for.
-#
-# `config` calls load_dotenv(override=False), so setting these first means a
-# LANGSMITH_TRACING=true in .env cannot turn it back on. Set
-# SUPPLYCHAIN_SMOKE_TRACING=1 if you are debugging the tracer itself.
-if os.getenv("SUPPLYCHAIN_SMOKE_TRACING", "").lower() not in ("1", "true", "yes"):
-    os.environ["LANGSMITH_TRACING"] = "false"
-    os.environ["LANGCHAIN_TRACING_V2"] = "false"
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+
+from langsmith import traceable  # noqa: E402
 
 from supplychain.agents.base import AGENT_TOOLS  # noqa: E402
 from supplychain.data import access  # noqa: E402
 from supplychain.graph import build_graph  # noqa: E402
+from supplychain.observability import configure_tracing  # noqa: E402
 from supplychain.runner import health  # noqa: E402
 from supplychain.tools import ALL_TOOLS  # noqa: E402
 
@@ -63,7 +50,21 @@ CHECKS = [
 ]
 
 
-def main() -> int:
+@traceable(run_type="chain", name="smoke test")
+def run_checks() -> int:
+    """Every check, inside one run.
+
+    The tools are called directly here rather than through an agent, so without
+    a parent there is nothing for them to hang under: each `tool.invoke` opens
+    its own *root* run and one pass leaves 161 of them in the project (73 tool
+    + 88 from the `@traced` helpers underneath). That is the same data, shredded
+    - you cannot see that `get_shipment_details` called `track_shipment`, or
+    which check a failure belongs to.
+
+    `@traceable` publishes a run tree on a context variable that LangChain's
+    tracer reads, so every `.invoke` below nests under this one automatically.
+    One run per smoke test, 34 tool calls inside it.
+    """
     failures = 0
 
     print("data layer")
@@ -112,6 +113,14 @@ def main() -> int:
     print()
     print("SMOKE TEST PASSED" if failures == 0 else f"SMOKE TEST FAILED ({failures} problem(s))")
     return 1 if failures else 0
+
+
+def main() -> int:
+    # Without this the tracer never starts and `@traceable` is a no-op, which
+    # is the correct behaviour with no LangSmith key - the smoke test still
+    # needs no credentials of any kind.
+    configure_tracing()
+    return run_checks()
 
 
 if __name__ == "__main__":
