@@ -18,7 +18,7 @@ A `.venv` exists at the repo root. On Windows PowerShell, prefix with
 `.\.venv\Scripts\python.exe -m` if it is not activated.
 
 ```bash
-pytest                                   # 370 tests, no API key needed
+pytest                                   # 395 tests, no API key needed
 pytest tests/test_tools.py               # one file
 pytest tests/test_tools.py::test_track_shipment_returns_full_record
 pytest -k "severity or transfer"         # by name
@@ -162,6 +162,7 @@ token cost predictable.
 | `config.py` | The only module that reads `os.environ`. |
 | `prompts.py` | Every system prompt, plus `PROMPT_VERSIONS` and `CHANGELOG`. Bump the version in the same commit as a prompt change — `observability.run_config` ships versions to LangSmith so runs can be compared. |
 | `memory.py` | Conversation memory (the checkpointer) and history (the conversation index). The only module that knows a checkpointer exists. |
+| `progress.py` | Live turn events. A callback handler, **not** a stream consumer: `graph.stream` reports a node only once it has finished, and `stream(subgraphs=True)` cannot see inside a worker because `run_worker` invokes it as a separately compiled graph. Callbacks reach both. Knows nothing about Streamlit — it takes a `sink`. |
 | `resilience.py` | Retry policy for transient model failures. Provider-agnostic on purpose — it matches status names and codes rather than importing Google's exception classes, so changing provider cannot silently disable retries. |
 | `ui/` | Presentation only. `theme.py` takes plain data and returns HTML; `overview.py` and `visuals.py` read through `access.py` and the tool layer to rebuild the numbers a panel needs. Nothing in `ui/` imports the graph or the model. |
 

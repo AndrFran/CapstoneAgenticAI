@@ -88,6 +88,19 @@ _DELAY_PATTERNS = (
 
 MAX_BACKOFF_SECONDS = 60.0
 
+# Set by whoever wants to watch retries happen - the UI, so an operator can
+# tell a rate-limit wait from a hang. A module-level hook rather than a
+# parameter because the call sites are three layers below the caller who cares.
+_RETRY_REPORTER: Callable[[str, int, float, BaseException], Any] | None = None
+
+
+def set_retry_reporter(
+    reporter: Callable[[str, int, float, BaseException], Any] | None,
+) -> None:
+    """Install (or clear) the callback fired before each retry wait."""
+    global _RETRY_REPORTER
+    _RETRY_REPORTER = reporter
+
 
 def is_transient(exc: BaseException) -> bool:
     """Whether waiting and trying again could plausibly succeed."""
@@ -158,8 +171,12 @@ def call_with_retry(
             if not is_transient(exc) or attempt == attempts - 1:
                 raise
             delay = suggested_delay(exc, attempt, delay_base)
-            if on_retry:
-                on_retry(label, attempt + 1, delay, exc)
+            reporter = on_retry or _RETRY_REPORTER
+            if reporter:
+                try:
+                    reporter(label, attempt + 1, delay, exc)
+                except Exception:  # noqa: BLE001 - reporting must not add a
+                    pass          # second failure on top of the first
             sleep(delay)
 
     raise last  # pragma: no cover - the loop either returns or raises

@@ -14,7 +14,7 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.types import Command
@@ -23,6 +23,8 @@ from . import memory
 from .config import get_settings
 from .graph import build_graph
 from .observability import configure_tracing, run_config
+from .progress import ProgressEvent, ProgressTracker
+from .resilience import set_retry_reporter
 
 _GRAPH = None
 
@@ -135,6 +137,16 @@ def _to_turn_result(thread_id: str, result: dict[str, Any], elapsed: float) -> T
     )
 
 
+def _register_conversation(thread_id: str, user_message: str) -> None:
+    """Put the conversation in the history index, titled by its first message."""
+    store = memory.get_store()
+    existing = store.get(thread_id)
+    store.upsert(
+        thread_id,
+        title=None if existing else memory.derive_title(user_message),
+    )
+
+
 def run_turn(
     user_message: str,
     thread_id: str | None = None,
@@ -155,12 +167,7 @@ def run_turn(
 
     # Register the conversation in the history index. The first user message
     # becomes the title, which is what makes the sidebar list readable.
-    store = memory.get_store()
-    existing = store.get(thread_id)
-    store.upsert(
-        thread_id,
-        title=None if existing else memory.derive_title(user_message),
-    )
+    _register_conversation(thread_id, user_message)
 
     started = time.perf_counter()
     result = graph.invoke(
@@ -172,7 +179,73 @@ def run_turn(
     )
     turn = _to_turn_result(thread_id, result, time.perf_counter() - started)
     if not turn.awaiting_approval:
-        store.record_turn(thread_id, severity=turn.severity, meta=turn.as_meta())
+        memory.get_store().record_turn(
+            thread_id, severity=turn.severity, meta=turn.as_meta()
+        )
+    return turn
+
+
+def stream_turn(
+    user_message: str,
+    thread_id: str | None = None,
+    *,
+    tags: list[str] | None = None,
+    on_event: Callable[[ProgressEvent], Any] | None = None,
+) -> TurnResult:
+    """Run a turn, reporting progress as it happens.
+
+    Identical to `run_turn` in every respect the caller can observe - same
+    result, same history recording - except that `on_event` is called as the
+    work happens rather than only at the end.
+
+    Two sources are needed. `graph.stream` reports a node only once it has
+    finished, so on its own the display would sit still through a 20-second
+    recovery step; the callback tracker fires during a node, and reaches inside
+    the worker agents, which `stream(subgraphs=True)` cannot because
+    `run_worker` invokes them as separately compiled graphs.
+
+    `on_event` is called synchronously on this thread, so a Streamlit
+    placeholder can repaint mid-node. An exception in it is swallowed by the
+    tracker: a broken progress display must not take down the turn.
+    """
+    thread_id = thread_id or new_thread_id()
+    graph = get_compiled_graph()
+    tracker = ProgressTracker(sink=on_event)
+
+    config = run_config(thread_id, tags=tags)
+    config["callbacks"] = [tracker]
+    # Surface the free-tier back-off. Without this the UI is silent for a full
+    # minute and an operator cannot tell a rate limit from a hang.
+    set_retry_reporter(tracker.waiting_out_rate_limit)
+
+    _register_conversation(thread_id, user_message)
+
+    started = time.perf_counter()
+    # `stream` yields updates rather than a final payload, so the approval
+    # interrupt arrives as one of them and has to be collected on the way past.
+    final: dict[str, Any] = {}
+    try:
+        for update in graph.stream(
+            {
+                "messages": [HumanMessage(content=user_message)],
+                "user_request": user_message,
+            },
+            config=config,
+            stream_mode="updates",
+        ):
+            for node, payload in (update or {}).items():
+                if node == "__interrupt__":
+                    final["__interrupt__"] = payload
+                else:
+                    tracker.node_finished(node)
+    finally:
+        set_retry_reporter(None)
+
+    turn = _to_turn_result(thread_id, final, time.perf_counter() - started)
+    if not turn.awaiting_approval:
+        memory.get_store().record_turn(
+            thread_id, severity=turn.severity, meta=turn.as_meta()
+        )
     return turn
 
 

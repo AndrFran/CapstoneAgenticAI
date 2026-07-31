@@ -157,6 +157,7 @@ table take over, and the UI shows which path was used.
 │   ├── config.py                    # Environment-driven settings
 │   ├── llm.py                       # Model factory (Google AI / Gemini)
 │   ├── memory.py                    # Conversation memory + history (TM1)
+│   ├── progress.py                  # Live turn events for the UI (TM1)
 │   ├── resilience.py                # Transient-failure retry policy (TM4)
 │   ├── observability.py             # LangSmith tracing + run config
 │   ├── prompts.py                   # Every system prompt, versioned
@@ -185,7 +186,7 @@ table take over, and the UI shows which path was used.
 │   ├── smoke_test.py                # Pre-flight check, no API key needed
 │   ├── system_test.py               # 33 end-to-end checks on the live system
 │   └── run_eval_conversations.py    # 12 traced conversations + latency stats
-├── tests/                           # 370 tests, none need an API key
+├── tests/                           # 395 tests, none need an API key
 │   ├── test_data_access.py          # Fixtures, relationships, runtime writes
 │   ├── test_tools.py                # All 34 tools, exact numbers
 │   ├── test_graph.py                # Routing, loop guard, HITL, actions
