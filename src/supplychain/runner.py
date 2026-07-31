@@ -191,7 +191,17 @@ def resume_turn(
     result = graph.invoke(
         Command(resume={"approved": approved, "note": note}), config=config
     )
-    return _to_turn_result(thread_id, result, time.perf_counter() - started)
+    turn = _to_turn_result(thread_id, result, time.perf_counter() - started)
+
+    # Record here too, not just in run_turn. A gated turn produces its assistant
+    # message on *this* call, and `conversation_turns` pairs messages with metas
+    # by position - so skipping it did not merely lose one turn's trace, it slid
+    # every later turn's trace onto the wrong answer.
+    if not turn.awaiting_approval:
+        memory.get_store().record_turn(
+            thread_id, severity=turn.severity, meta=turn.as_meta()
+        )
+    return turn
 
 
 def new_thread_id() -> str:
