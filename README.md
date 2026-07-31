@@ -183,8 +183,9 @@ table take over, and the UI shows which path was used.
 ├── scripts/
 │   ├── generate_mock_data.py        # Regenerate the dataset
 │   ├── smoke_test.py                # Pre-flight check, no API key needed
+│   ├── system_test.py               # 33 end-to-end checks on the live system
 │   └── run_eval_conversations.py    # 12 traced conversations + latency stats
-├── tests/                           # 368 tests, none need an API key
+├── tests/                           # 370 tests, none need an API key
 │   ├── test_data_access.py          # Fixtures, relationships, runtime writes
 │   ├── test_tools.py                # All 34 tools, exact numbers
 │   ├── test_graph.py                # Routing, loop guard, HITL, actions

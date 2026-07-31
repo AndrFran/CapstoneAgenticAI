@@ -203,6 +203,38 @@ def test_a_healthy_worker_is_unaffected(monkeypatch):
     assert update["severity"] == "high"
 
 
+def test_the_responder_is_told_a_check_failed():
+    """Found by the end-to-end system test.
+
+    Given only the failure summary as prose, the model answered "I am
+    attempting to re-query the database" - nothing runs after the responder,
+    so that is a promise the system cannot keep. The brief now marks it.
+    """
+    from supplychain.agents.responder import _brief
+
+    brief = _brief(
+        {
+            "user_request": "status of SHP-2026-0002?",
+            "findings": {
+                "shipment": {"summary": "could not be completed", "failed": True},
+                "inventory": {"summary": "3 warehouses can cover it"},
+            },
+        }
+    )
+    assert "COULD NOT COMPLETE" in brief
+    assert "do not retry" in brief
+    # The healthy agent is not tarred with the same brush.
+    assert brief.count("COULD NOT COMPLETE") == 1
+    assert "3 warehouses can cover it" in brief
+
+
+def test_the_responder_brief_is_unmarked_when_nothing_failed():
+    from supplychain.agents.responder import _brief
+
+    brief = _brief({"user_request": "x", "findings": {"shipment": {"summary": "fine"}}})
+    assert "COULD NOT COMPLETE" not in brief
+
+
 def test_failed_agents_are_listed():
     from supplychain.graph import failed_agents
 

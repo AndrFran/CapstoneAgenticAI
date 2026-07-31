@@ -46,7 +46,12 @@ def _brief(state: dict[str, Any]) -> str:
         lines.append("Agent findings:")
         for agent, finding in findings.items():
             summary = finding.get("summary") if isinstance(finding, dict) else finding
-            lines.append(f"\n[{agent}]\n{summary}")
+            # Flag a contained failure explicitly. Left to the summary prose
+            # alone, the model tended to promise it was retrying - nothing runs
+            # after this call, so that promise is never kept.
+            failed = isinstance(finding, dict) and finding.get("failed")
+            marker = " (COULD NOT COMPLETE - report this gap, do not retry)" if failed else ""
+            lines.append(f"\n[{agent}]{marker}\n{summary}")
 
     pending = state.get("pending_action")
     if pending:

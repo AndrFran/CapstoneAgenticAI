@@ -18,7 +18,7 @@ A `.venv` exists at the repo root. On Windows PowerShell, prefix with
 `.\.venv\Scripts\python.exe -m` if it is not activated.
 
 ```bash
-pytest                                   # 368 tests, no API key needed
+pytest                                   # 370 tests, no API key needed
 pytest tests/test_tools.py               # one file
 pytest tests/test_tools.py::test_track_shipment_returns_full_record
 pytest -k "severity or transfer"         # by name
@@ -26,6 +26,8 @@ pytest -o addopts="" --tb=short          # pyproject sets -q; this restores the 
 pytest tests/test_live_agents.py --live  # 8 real Gemini calls; needs GOOGLE_API_KEY
 
 python scripts/smoke_test.py             # data + all 34 tools + graph compile, no API key
+python scripts/system_test.py            # 33 end-to-end checks on the live system (needs a key)
+python scripts/system_test.py --pace 20  # free tier: 15 req/min
 python scripts/generate_mock_data.py     # regenerate the committed JSON fixtures
 python scripts/run_eval_conversations.py # 12 traced conversations + latency stats (needs keys)
 python scripts/run_eval_conversations.py --case delay_impact   # one case

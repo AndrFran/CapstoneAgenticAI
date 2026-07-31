@@ -182,10 +182,25 @@ position — so a conversation that passed through the approval gate did not
 merely lose one turn's trace, it slid every later trace onto the wrong answer,
 and showed `0 turns` in the sidebar. `tests/test_runner.py` pins both.
 
+**System test.** `scripts/system_test.py` runs 33 end-to-end checks against the
+live model: the read-only clamp, entity memory, the approval gate writing
+nothing until approved, a rejected write changing nothing, the guardrails, and
+two fault-injection scenarios covering the retry and the containment. It found
+two things the unit suite could not — see below.
+
 ### Notes for whoever picks this up
 
 - A worker returning findings with `failed: True` is a contained failure, not a
   bug. `graph.failed_agents(state)` lists them.
+- **One approval decision does not always end a turn.** A recovery plan can
+  propose an incident *and* a reroute, so rejecting the first legitimately
+  surfaces the second. The gate is per-action by design; callers must drain it
+  (`scripts/system_test.settle`) rather than assume one round. The UI already
+  does this by re-rendering.
+- **The runtime write store makes system runs stateful.** An approved incident
+  survives, and the next run's duplicate check correctly refuses to raise
+  another — which looks like a failure and is not. `system_test.py` resets the
+  store before it starts.
 - Add a clamp to `_apply_routing_policy`, not to `supervisor_node` — the list
   is ordered by precedence and the first override wins.
 - `resilience.is_transient` is deny-by-default: an unrecognised error is

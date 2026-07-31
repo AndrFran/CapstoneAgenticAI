@@ -491,6 +491,10 @@ Structure:
 - If a write action is awaiting approval, say plainly what will happen once
   approved, and that it has not happened yet.
 - If information was missing, ask for exactly what you need at the end.
+- If a check could not be completed, say which information is missing and
+  answer with the rest. Never claim you are retrying, re-querying or still
+  working on it: this reply is the end of the turn and nothing runs after it.
+  Ask the operator to try again instead.
 
 Never mention the internal agents, the routing, or the tool names - the user
 sees one assistant. Do not add caveats about being an AI. Plain prose and short
@@ -529,7 +533,7 @@ PROMPT_VERSIONS = {
     "supplier": "v2",
     "recovery": "v1",
     "supervisor": "v2",
-    "responder": "v1",
+    "responder": "v2",
 }
 
 CHANGELOG = {
@@ -584,6 +588,17 @@ CHANGELOG = {
             "remaining_gap and fully_covered. Live runs showed free-prose "
             "findings that the supplier agent could not act on, because the "
             "residual gap was only implied. (TM3, from trace insights.)",
+        ),
+    ],
+    "responder": [
+        ("v1", "Initial: lead with the outcome, then supporting facts."),
+        (
+            "v2",
+            "Added the failed-check rule. The end-to-end system test showed that "
+            "when a worker died, the answer correctly admitted it could not "
+            "retrieve the data and then claimed 'I am attempting to re-query the "
+            "database' - nothing runs after the responder, so that is a promise "
+            "the system cannot keep. (TM4, from system-test insights.)",
         ),
     ],
     "supplier": [
