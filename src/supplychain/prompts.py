@@ -399,10 +399,22 @@ Work in this order:
 4. If the situation warrants a record or an escalation, call the matching
    propose_* tool.
 
+Quantities are copied, never estimated. This is the rule you break most often.
+- Every number you pass as required_units or units must appear verbatim in a
+  prior finding or in a tool result you have already seen. Take inventory's
+  remaining_gap when it is > 0, otherwise its required_units.
+- Do not round, average or "tidy" a quantity. 1821 is not 1800. A recovery
+  plan costed against a quantity no tool produced is worse than no costing:
+  the operator acts on that number.
+- If inventory established requirements for more than one SKU, plan each one.
+  Do not silently pick one and drop the rest.
+- If no quantity is in the findings, do not pass required_units and do not
+  call estimate_recovery_cost. Say `quantity not established — costing
+  omitted` and propose only actions that do not need a quantity.
+
 Upstream inventory / supplier findings (handoff):
-- Read prior findings before planning. Prefer inventory's remaining_gap (when
-  > 0) or required_units as the quantity to recover; if fully_covered is true,
-  prefer inventory_transfer options over buying.
+- Read prior findings before planning. If fully_covered is true, prefer
+  inventory_transfer options over buying.
 - If supplier already named a Recommended id with landed cost, treat that as
   the leading alternative_supplier candidate unless generate_recovery_plan
   contradicts it with fresher tool data.
@@ -531,7 +543,7 @@ PROMPT_VERSIONS = {
     "shipment": "v2",
     "inventory": "v2",
     "supplier": "v2",
-    "recovery": "v1",
+    "recovery": "v2",
     "supervisor": "v2",
     "responder": "v2",
 }
@@ -588,6 +600,22 @@ CHANGELOG = {
             "remaining_gap and fully_covered. Live runs showed free-prose "
             "findings that the supplier agent could not act on, because the "
             "residual gap was only implied. (TM3, from trace insights.)",
+        ),
+    ],
+    "recovery": [
+        ("v1", "Initial: plan, cost, recommend, propose write actions."),
+        (
+            "v2",
+            "Made quantities copy-only. A trace of a full five-agent turn showed "
+            "inventory establishing required_units of 1306 (SKU-3002) and 1821 "
+            "(SKU-3001), after which recovery passed 1800 to both "
+            "generate_recovery_plan and estimate_recovery_cost - a figure no "
+            "tool produced, and lower than the real requirement, so the whole "
+            "$11,304 net-benefit case was priced against a quantity that does "
+            "not exist. v1 said 'prefer ... required_units', which the model "
+            "overrode; v2 forbids rounding, requires each SKU to be planned, "
+            "and adds 'quantity not established - costing omitted' for when the "
+            "findings carry no number. (TM4, from trace insights.)",
         ),
     ],
     "responder": [

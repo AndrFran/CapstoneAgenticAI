@@ -369,6 +369,78 @@ tree, mandatory vocabulary, and a Position / Need / Transfers / `remaining_gap`
 | TM3 eval cases failed | — | 0 of 3 |
 | Actionable landed cost when qty known | inconsistent | on every recommendation |
 
+### 5c. `RECOVERY_PROMPT` — a costed plan priced against an invented quantity (TM4)
+
+**What the trace showed**
+
+A five-agent turn on 2026-07-31 — *"SHP-2026-0002 is late into WH-N02 — what's
+the impact and what should we do?"* — routed cleanly:
+
+```
+intake → supervisor → incident_analysis → supervisor → shipment
+       → supervisor → inventory → supervisor → recovery → approval
+```
+
+No redundant calls anywhere; the tool economy rules from 5a/5b held. The defect
+was in the numbers. The inventory agent established, via
+`calculate_required_quantity`:
+
+| SKU | available | required_units | shortfall vs safety stock |
+|---|---|---|---|
+| SKU-3002 | 374 | **1306** | 0 |
+| SKU-3001 | 23 (+200 in transit) | **1821** | 415 |
+
+Both were `fully_covered: true` by transfer. The recovery agent then called:
+
+```
+generate_recovery_plan  { required_units: 1800, sku: SKU-3001, ... }
+estimate_recovery_cost  { units: 1800, unit_cost_usd: 50.13, delay_days: 3 }
+   → recovery_cost 1,116.00 · cost_of_inaction 12,420.00 · net_benefit 11,304.00
+```
+
+**1800 appears in no tool output anywhere in the trace before recovery ran** —
+searching every tool result in the trace returns only recovery's own two calls,
+echoing back what it passed in. The model rounded 1821 down to a tidy number.
+Two consequences, in order of seriousness:
+
+1. The entire $11,304 business case — the one figure an operator would act on —
+   is priced against a quantity that does not exist. It errs *low*, so it also
+   under-orders against a real 415-unit safety-stock shortfall.
+2. SKU-3002's 1306 units were dropped from the plan silently.
+
+**Why v1 did not prevent it.** The prompt already carried the handoff rule
+`Prefer inventory's remaining_gap (when > 0) or required_units as the quantity
+to recover`. "Prefer" is a suggestion, and the model overrode it while
+appearing to comply — 1800 is close enough to 1821 to read as compliance in the
+final prose. This is the same pathology 5b fixed for `SUPPLIER_PROMPT`, in the
+one agent that had not been given the hard version of the rule.
+
+**After** — quantities are copy-only, in their own block above the handoff
+rules:
+
+```
+Quantities are copied, never estimated. This is the rule you break most often.
+- Every number you pass as required_units or units must appear verbatim in a
+  prior finding or in a tool result you have already seen. ...
+- Do not round, average or "tidy" a quantity. 1821 is not 1800. ...
+- If inventory established requirements for more than one SKU, plan each one.
+- If no quantity is in the findings, do not pass required_units and do not
+  call estimate_recovery_cost. Say `quantity not established — costing
+  omitted` ...
+```
+
+| Metric | v1 | v2 |
+|---|---|---|
+| Quantity provenance | "prefer" upstream figure | must appear verbatim in a finding or tool result |
+| Rounding | unaddressed | forbidden, with the observed 1821→1800 case named |
+| Multiple SKUs | one silently chosen | each planned |
+| No quantity available | costing tool still callable | `quantity not established — costing omitted` |
+
+`PROMPT_VERSIONS["recovery"]` → `v2`, so LangSmith metadata separates runs
+before and after. **Not yet re-measured on a live run** — the finding and the
+fix are from 2026-07-31, and the free-tier daily quota was exhausted the same
+day (see 4d). The before/after check belongs in the next eval pass.
+
 ## 6. Evaluation observations
 
 ### 6a. Shipment workflows (TM2)
