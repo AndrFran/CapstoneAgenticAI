@@ -59,6 +59,7 @@ class IntakeResult(BaseModel):
     warehouse_ids: list[str] = Field(default_factory=list)
     order_ids: list[str] = Field(default_factory=list)
     incident_ids: list[str] = Field(default_factory=list)
+    route_ids: list[str] = Field(default_factory=list)
     quantities: list[int] = Field(default_factory=list)
     missing_information: list[str] = Field(
         default_factory=list,
@@ -107,8 +108,13 @@ class SupplyChainState(TypedDict, total=False):
     messages: Annotated[list[AnyMessage], add_messages]
 
     # Intake
-    request: dict[str, Any] | None  # serialised IntakeResult
+    request: dict[str, Any] | None  # serialised IntakeResult + intake metadata
     user_request: str
+
+    # Conversation-level entity memory: the identifiers this conversation has
+    # mentioned, most recent first, per kind. Deliberately NOT reset per turn -
+    # it is what lets "that shipment" resolve on a later turn.
+    conversation_entities: dict[str, list[str]]
 
     # Routing. `hops` and `visited` are last-write-wins (not reducers) so the
     # intake node can reset them at the start of every conversational turn -

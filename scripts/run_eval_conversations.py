@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import statistics
 import sys
 import time
@@ -73,22 +74,69 @@ CASES: dict[str, list[str]] = {
 }
 
 
-def run_case(name: str, turns: list[str], *, approve: bool) -> dict:
+# A multi-agent turn is many model calls, and the Gemini free tier allows only
+# 15 requests/minute - so a 12-conversation run hits the quota without this.
+QUOTA_MARKERS = ("RESOURCE_EXHAUSTED", "429", "quota")
+MAX_QUOTA_RETRIES = 4
+RETRY_DELAY_PATTERN = re.compile(r"[Rr]etry in ([0-9.]+)s")
+
+
+def is_quota_error(exc: Exception) -> bool:
+    text = str(exc)
+    return any(marker in text for marker in QUOTA_MARKERS)
+
+
+def retry_delay_from(exc: Exception, attempt: int) -> float:
+    """Honour the server's suggested delay, else back off exponentially."""
+    match = RETRY_DELAY_PATTERN.search(str(exc))
+    if match:
+        return float(match.group(1)) + 1.0
+    return min(60.0, 5.0 * (2**attempt))
+
+
+def with_quota_retry(call, *, label: str):
+    """Run a turn, waiting out rate limits rather than failing the case."""
+    last: Exception | None = None
+    for attempt in range(MAX_QUOTA_RETRIES):
+        try:
+            return call()
+        except Exception as exc:  # noqa: BLE001
+            if not is_quota_error(exc):
+                raise
+            last = exc
+            delay = retry_delay_from(exc, attempt)
+            print(
+                f"    rate limited on {label}; waiting {delay:.1f}s "
+                f"(attempt {attempt + 1}/{MAX_QUOTA_RETRIES})"
+            )
+            time.sleep(delay)
+    raise last  # type: ignore[misc]
+
+
+def run_case(name: str, turns: list[str], *, approve: bool, pace: float = 0.0) -> dict:
     thread_id = f"eval-{name}"
     records = []
     started = time.perf_counter()
 
     for index, message in enumerate(turns, start=1):
+        if pace and index > 1:
+            time.sleep(pace)
         try:
-            result = run_turn(message, thread_id, tags=["eval", name])
+            result = with_quota_retry(
+                lambda: run_turn(message, thread_id, tags=["eval", name]),
+                label=f"{name} turn {index}",
+            )
             approvals = 0
             while result.awaiting_approval:
                 approvals += 1
-                result = resume_turn(
-                    thread_id,
-                    approved=approve,
-                    note="" if approve else "rejected by the evaluation harness",
-                    tags=["eval", name],
+                result = with_quota_retry(
+                    lambda: resume_turn(
+                        thread_id,
+                        approved=approve,
+                        note="" if approve else "rejected by the evaluation harness",
+                        tags=["eval", name],
+                    ),
+                    label=f"{name} approval {approvals}",
                 )
             records.append(
                 {
@@ -142,6 +190,16 @@ def main() -> int:
         default=str(ROOT / "docs" / "eval_runs.json"),
         help="where to write the results JSON",
     )
+    parser.add_argument(
+        "--pace",
+        type=float,
+        default=0.0,
+        help=(
+            "seconds to wait between turns. The Gemini free tier allows 15 "
+            "requests/minute and one multi-agent turn is several requests, so "
+            "try --pace 20 for a full run on a free-tier key."
+        ),
+    )
     args = parser.parse_args()
 
     status = health()
@@ -173,7 +231,11 @@ def main() -> int:
     results = []
     for name in selected:
         print(f"[{name}]")
-        results.append(run_case(name, CASES[name], approve=not args.no_approve))
+        results.append(
+            run_case(
+                name, CASES[name], approve=not args.no_approve, pace=args.pace
+            )
+        )
         print()
 
     latencies = [

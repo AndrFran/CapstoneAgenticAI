@@ -27,14 +27,35 @@ class LLMNotConfiguredError(RuntimeError):
     """Raised when an agent is invoked without an API key present."""
 
 
-def _require_key() -> str:
+def _credential_kwargs() -> dict:
+    """Model kwargs for whichever Google auth path is configured.
+
+    Two paths: an AI Studio API key (the default), or the Vertex AI backend
+    selected via GOOGLE_GENAI_USE_VERTEXAI=true + GOOGLE_CLOUD_PROJECT and
+    authenticated with gcloud ADC - no key required.
+    """
     settings = get_settings()
     if not settings.llm_configured:
         raise LLMNotConfiguredError(
-            "GOOGLE_API_KEY is not set. Copy .env.example to .env and add a key "
-            "from https://aistudio.google.com/apikey"
+            "No LLM credentials configured. Either set GOOGLE_API_KEY (get one "
+            "at https://aistudio.google.com/apikey), or use Vertex AI: set "
+            "GOOGLE_GENAI_USE_VERTEXAI=true and GOOGLE_CLOUD_PROJECT, and log "
+            "in with `gcloud auth application-default login`. See .env.example."
         )
-    return settings.google_api_key  # type: ignore[return-value]
+    if settings.use_vertexai:
+        return {"vertexai": True, "project": settings.google_cloud_project}
+    return {"google_api_key": settings.google_api_key}
+
+
+def _reasoning_kwargs(effort: str) -> dict:
+    """Reasoning-depth kwargs, only for models that accept them.
+
+    ``reasoning_effort`` maps to Gemini 3's ``thinking_level``; Gemini 2.x
+    models reject it at request time, so omit it there rather than fail.
+    """
+    if get_settings().model.startswith("gemini-2"):
+        return {}
+    return {"reasoning_effort": effort}
 
 
 @lru_cache(maxsize=8)
@@ -52,10 +73,10 @@ def get_llm(tag: str = "default") -> BaseChatModel:
     return init_chat_model(
         settings.model,
         model_provider=MODEL_PROVIDER,
-        google_api_key=_require_key(),
         max_output_tokens=settings.max_output_tokens,
-        # Maps to Gemini's `thinking_level`.
-        reasoning_effort=settings.reasoning_effort,
+        # Maps to Gemini's `thinking_level` (Gemini 3 only).
+        **_reasoning_kwargs(settings.reasoning_effort),
+        **_credential_kwargs(),
     )
 
 
@@ -71,9 +92,9 @@ def get_structured_llm(tag: str = "router") -> BaseChatModel:
     return init_chat_model(
         settings.model,
         model_provider=MODEL_PROVIDER,
-        google_api_key=_require_key(),
         max_output_tokens=min(settings.max_output_tokens, 2048),
-        reasoning_effort=settings.router_reasoning_effort,
+        **_reasoning_kwargs(settings.router_reasoning_effort),
+        **_credential_kwargs(),
     )
 
 

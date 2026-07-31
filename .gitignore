@@ -220,3 +220,10 @@ __marimo__/
 # NovaRetail platform: runtime write store (approved incidents, reroutes).
 # The committed fixtures in data/mock/ stay pristine; this is per-run state.
 src/supplychain/data/runtime/
+
+# Claude Code session config and planning artifacts (local only)
+.claude/
+tasks/
+
+# Conversation memory and history (SQLite checkpointer + conversation index).
+.supplychain/

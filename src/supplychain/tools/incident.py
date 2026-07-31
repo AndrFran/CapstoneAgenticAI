@@ -105,6 +105,114 @@ def assess_damaged_goods(shipment_id: str) -> str:
 
 
 @tool
+def find_related_incidents(
+    shipment_id: str | None = None,
+    supplier_id: str | None = None,
+    sku: str | None = None,
+    warehouse_id: str | None = None,
+) -> str:
+    """Find existing incidents already covering this situation.
+
+    Call this before treating a disruption as new. If an open incident already
+    covers the same shipment, supplier, SKU or warehouse, the operator needs its
+    id - not a duplicate record.
+
+    Args:
+        shipment_id: Related shipment, if any.
+        supplier_id: Related supplier, if any.
+        sku: Related product, if any.
+        warehouse_id: Related warehouse, if any.
+    """
+    shipment_id = normalise_id(shipment_id) or None
+    supplier_id = normalise_id(supplier_id) or None
+    sku = normalise_id(sku) or None
+    warehouse_id = normalise_id(warehouse_id) or None
+
+    if not any((shipment_id, supplier_id, sku, warehouse_id)):
+        return error(
+            "Provide at least one of shipment_id, supplier_id, sku or warehouse_id."
+        )
+
+    matches = []
+    for incident in access.load("incidents"):
+        reasons = []
+        if shipment_id and incident.get("related_shipment_id") == shipment_id:
+            reasons.append(f"same shipment {shipment_id}")
+        if supplier_id and incident.get("related_supplier_id") == supplier_id:
+            reasons.append(f"same supplier {supplier_id}")
+        if warehouse_id and incident.get("related_warehouse_id") == warehouse_id:
+            reasons.append(f"same warehouse {warehouse_id}")
+        if sku and sku in (incident.get("related_skus") or []):
+            reasons.append(f"same SKU {sku}")
+        if not reasons:
+            continue
+        matches.append(
+            {
+                "incident_id": incident["incident_id"],
+                "type": incident.get("type"),
+                "severity": incident.get("severity"),
+                "status": incident.get("status"),
+                "title": incident.get("title"),
+                "created_at": incident.get("created_at"),
+                "escalated": incident.get("escalated", False),
+                "matched_on": reasons,
+                # Same shipment plus still open is the strong duplicate signal.
+                "likely_duplicate": incident.get("status") == "open"
+                and bool(shipment_id)
+                and incident.get("related_shipment_id") == shipment_id,
+            }
+        )
+
+    matches.sort(key=lambda m: (not m["likely_duplicate"], m.get("created_at") or ""))
+    open_matches = [m for m in matches if m["status"] == "open"]
+
+    return as_json(
+        {
+            "query": {
+                "shipment_id": shipment_id,
+                "supplier_id": supplier_id,
+                "sku": sku,
+                "warehouse_id": warehouse_id,
+            },
+            "match_count": len(matches),
+            "open_match_count": len(open_matches),
+            "duplicate_of": next(
+                (m["incident_id"] for m in matches if m["likely_duplicate"]), None
+            ),
+            "matches": matches,
+            "recommendation": (
+                "An open incident already covers this - update it instead of "
+                "raising a new one."
+                if any(m["likely_duplicate"] for m in matches)
+                else (
+                    "Related history exists but nothing open on this exact "
+                    "shipment; a new incident is reasonable."
+                    if matches
+                    else "Nothing on record - this is a new incident."
+                )
+            ),
+        }
+    )
+
+
+def _order_impact(shipment_id: str) -> dict:
+    """Order exposure behind a shipment: counts, units, stores and value."""
+    orders = access.orders_for_shipment(shipment_id)
+    at_risk = [o for o in orders if o["status"] == "at_risk"]
+    value = 0.0
+    for order in at_risk:
+        product = access.get_product(order["sku"]) or {}
+        value += order["quantity"] * product.get("retail_price", 0)
+    return {
+        "order_count": len(orders),
+        "at_risk_count": len(at_risk),
+        "at_risk_units": sum(o["quantity"] for o in at_risk),
+        "at_risk_retail_value_usd": round(value, 2),
+        "stores_affected": sorted({o["store_id"] for o in at_risk}),
+    }
+
+
+@tool
 def classify_incident_severity(
     incident_type: str,
     shipment_id: str | None = None,
@@ -115,10 +223,12 @@ def classify_incident_severity(
     """Score an incident's severity from the operational facts on record.
 
     Rules applied (highest wins):
-      * critical - stockout with no cover, or delay over 72h on an expedited
-        or high-value shipment
-      * high     - delay over 48h, supplier suspended, or below safety stock
-      * medium   - delay over 12h, route disrupted, or below reorder point
+      * critical - stockout with no cover network-wide, or delay over 72h on an
+        expedited or high-value shipment
+      * high     - delay over 48h, supplier suspended, below safety stock,
+        damage on the load, or over $100k of at-risk order value
+      * medium   - delay over 12h, route disrupted, below reorder point,
+        3+ orders at risk, or 5+ stores exposed
       * low      - everything else
 
     Args:
@@ -165,6 +275,22 @@ def classify_incident_severity(
         if route.get("status") in {"disrupted", "weather_hold"}:
             scores.append("medium")
             signals.append(f"route {route['route_id']} is {route['status']}")
+
+        # Downstream order exposure: how much customer promise is actually at
+        # risk, not just how late the truck is.
+        impact = _order_impact(shipment["shipment_id"])
+        if impact["at_risk_retail_value_usd"] > 100_000:
+            scores.append("high")
+            signals.append(
+                f"${impact['at_risk_retail_value_usd']:,.0f} of at-risk order value "
+                f"across {impact['at_risk_count']} orders"
+            )
+        elif impact["at_risk_count"] >= 3:
+            scores.append("medium")
+            signals.append(f"{impact['at_risk_count']} orders at risk")
+        if len(impact["stores_affected"]) >= 5:
+            scores.append("medium")
+            signals.append(f"{len(impact['stores_affected'])} stores exposed")
 
     if incident_type == "route_disruption" and not shipment:
         disrupted = [
@@ -236,6 +362,9 @@ def classify_incident_severity(
                 "medium": 24,
                 "low": 72,
             }[severity],
+            "order_impact": (
+                _order_impact(shipment["shipment_id"]) if shipment else None
+            ),
             "inputs": {
                 "shipment_id": normalise_id(shipment_id) or None,
                 "sku": normalise_id(sku) or None,
@@ -305,6 +434,7 @@ INCIDENT_TOOLS = [
     get_shipment_details,
     check_route_status,
     assess_damaged_goods,
+    find_related_incidents,
     classify_incident_severity,
     check_incident_status,
     list_open_incidents,

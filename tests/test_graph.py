@@ -65,6 +65,74 @@ def test_supervisor_will_not_re_enter_recovery_while_approval_is_pending():
     assert route_from_supervisor(state) == "respond"
 
 
+def _status_query_state(**overrides):
+    state = {
+        "request": {"incident_type": "status_query", "is_supported": True},
+        "visited": [],
+    }
+    state.update(overrides)
+    return state
+
+
+def test_status_query_never_routes_to_recovery():
+    """A read-only lookup must not end at an approval gate."""
+    from supplychain.graph import _constrain_read_only
+
+    target, reason = _constrain_read_only(_status_query_state(), "recovery")
+    assert target == "respond"
+    assert "read-only" in reason
+
+
+def test_status_query_stops_after_the_worker_budget():
+    from supplychain.graph import STATUS_QUERY_WORKER_BUDGET, _constrain_read_only
+
+    visited = ["shipment", "inventory"][:STATUS_QUERY_WORKER_BUDGET]
+    target, reason = _constrain_read_only(
+        _status_query_state(visited=visited), "supplier"
+    )
+    assert target == "respond"
+    assert "stopping rather than gathering more" in reason
+
+
+def test_status_query_allows_the_first_specialist():
+    from supplychain.graph import _constrain_read_only
+
+    target, reason = _constrain_read_only(_status_query_state(), "shipment")
+    assert target == "shipment"
+    assert reason is None
+
+
+def test_status_query_allows_a_second_agent_when_the_question_spans_two():
+    """"Status of X, and do we have stock?" legitimately needs two specialists."""
+    from supplychain.graph import _constrain_read_only
+
+    target, reason = _constrain_read_only(
+        _status_query_state(visited=["shipment"]), "inventory"
+    )
+    assert target == "inventory"
+    assert reason is None
+
+
+def test_the_clamp_only_applies_to_status_queries():
+    from supplychain.graph import _constrain_read_only
+
+    for incident_type in ("shipment_delay", "supplier_failure", "damaged_goods"):
+        state = {
+            "request": {"incident_type": incident_type},
+            "visited": ["incident_analysis", "shipment", "inventory"],
+        }
+        target, reason = _constrain_read_only(state, "recovery")
+        assert target == "recovery", f"{incident_type} must still reach recovery"
+        assert reason is None
+
+
+def test_the_clamp_handles_a_missing_request():
+    from supplychain.graph import _constrain_read_only
+
+    target, reason = _constrain_read_only({}, "recovery")
+    assert (target, reason) == ("recovery", None)
+
+
 def test_recovery_routes_to_approval_only_with_a_pending_action():
     assert route_from_recovery({"pending_action": None}) == "supervisor"
     assert (

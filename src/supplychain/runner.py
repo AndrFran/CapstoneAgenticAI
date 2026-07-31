@@ -16,9 +16,10 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.types import Command
 
+from . import memory
 from .config import get_settings
 from .graph import build_graph
 from .observability import configure_tracing, run_config
@@ -27,18 +28,27 @@ _GRAPH = None
 
 
 def get_compiled_graph():
-    """Process-wide compiled graph (its MemorySaver holds conversation memory)."""
+    """Process-wide compiled graph.
+
+    Its checkpointer is the conversation memory - SQLite by default, so a
+    conversation (and a pending approval) survives an app restart.
+    """
     global _GRAPH
     if _GRAPH is None:
         configure_tracing()
-        _GRAPH = build_graph()
+        _GRAPH = build_graph(memory.get_checkpointer())
     return _GRAPH
 
 
 def reset_graph() -> None:
-    """Drop the compiled graph and its memory (tests, and 'new conversation')."""
+    """Drop the compiled graph and rebuild the memory back end.
+
+    Used by tests and when the memory configuration changes. Starting a new
+    conversation does **not** need this - just use a new ``thread_id``.
+    """
     global _GRAPH
     _GRAPH = None
+    memory.reset()
 
 
 @dataclass
@@ -54,12 +64,42 @@ class TurnResult:
     findings: dict[str, Any] = field(default_factory=dict)
     executed_actions: list[dict[str, Any]] = field(default_factory=list)
     request: dict[str, Any] | None = None
+    entities: dict[str, list[str]] = field(default_factory=dict)
     latency_seconds: float = 0.0
     hops: int = 0
 
     @property
     def ok(self) -> bool:
         return self.awaiting_approval or bool(self.answer)
+
+    @property
+    def unknown_identifiers(self) -> list[dict[str, Any]]:
+        return list((self.request or {}).get("unknown_identifiers") or [])
+
+    @property
+    def resolved_from_memory(self) -> list[str]:
+        return list((self.request or {}).get("resolved_from_memory") or [])
+
+    @property
+    def used_fallback_extraction(self) -> bool:
+        return (self.request or {}).get("extracted_by") == "regex"
+
+    def as_meta(self) -> dict[str, Any]:
+        """Trace metadata for this turn, persisted with the conversation.
+
+        The checkpointer keeps the messages; this keeps *how* the answer was
+        reached, so reopening a past conversation is not lossy.
+        """
+        return {
+            "route": self.route,
+            "severity": self.severity,
+            "findings": self.findings,
+            "executed_actions": self.executed_actions,
+            "request": self.request,
+            "entities": self.entities,
+            "latency": self.latency_seconds,
+            "hops": self.hops,
+        }
 
 
 def _interrupt_payload(result: dict[str, Any]) -> dict[str, Any] | None:
@@ -89,6 +129,7 @@ def _to_turn_result(thread_id: str, result: dict[str, Any], elapsed: float) -> T
         findings=dict(state.get("findings") or {}),
         executed_actions=list(state.get("executed_actions") or []),
         request=state.get("request"),
+        entities=dict(state.get("conversation_entities") or {}),
         latency_seconds=round(elapsed, 2),
         hops=state.get("hops", 0),
     )
@@ -108,9 +149,18 @@ def run_turn(
             the same id back to continue a conversation.
         tags: Extra LangSmith tags for this run (e.g. an eval-set name).
     """
-    thread_id = thread_id or f"thread-{uuid.uuid4().hex[:12]}"
+    thread_id = thread_id or new_thread_id()
     graph = get_compiled_graph()
     config = run_config(thread_id, tags=tags)
+
+    # Register the conversation in the history index. The first user message
+    # becomes the title, which is what makes the sidebar list readable.
+    store = memory.get_store()
+    existing = store.get(thread_id)
+    store.upsert(
+        thread_id,
+        title=None if existing else memory.derive_title(user_message),
+    )
 
     started = time.perf_counter()
     result = graph.invoke(
@@ -120,7 +170,10 @@ def run_turn(
         },
         config=config,
     )
-    return _to_turn_result(thread_id, result, time.perf_counter() - started)
+    turn = _to_turn_result(thread_id, result, time.perf_counter() - started)
+    if not turn.awaiting_approval:
+        store.record_turn(thread_id, severity=turn.severity, meta=turn.as_meta())
+    return turn
 
 
 def resume_turn(
@@ -141,12 +194,109 @@ def resume_turn(
     return _to_turn_result(thread_id, result, time.perf_counter() - started)
 
 
+def new_thread_id() -> str:
+    """Identifier for a fresh conversation."""
+    return f"thread-{uuid.uuid4().hex[:12]}"
+
+
+# ---------------------------------------------------------------------------
+# Conversation memory and history
+# ---------------------------------------------------------------------------
+
+
 def conversation_messages(thread_id: str) -> list[Any]:
     """Full message history for a thread (used to rehydrate the UI)."""
     snapshot = get_compiled_graph().get_state({"configurable": {"thread_id": thread_id}})
     if not snapshot:
         return []
     return list(snapshot.values.get("messages") or [])
+
+
+def conversation_turns(thread_id: str) -> list[dict[str, Any]]:
+    """Message history as ``{role, content, meta}``, ready to render.
+
+    Assistant turns are paired with the trace metadata recorded when they ran,
+    so reopening a conversation restores the route, severity and intake summary
+    rather than just the text.
+    """
+    metas = memory.get_store().turn_meta(thread_id)
+    turns: list[dict[str, Any]] = []
+    assistant_index = 0
+
+    for message in conversation_messages(thread_id):
+        role = "assistant" if isinstance(message, AIMessage) else "user"
+        content = message.content
+        if not isinstance(content, str):
+            content = "\n".join(
+                block.get("text", "")
+                for block in (content or [])
+                if isinstance(block, dict)
+            )
+        if not content or not content.strip():
+            continue
+
+        entry: dict[str, Any] = {"role": role, "content": content.strip(), "meta": {}}
+        if role == "assistant":
+            if assistant_index < len(metas):
+                entry["meta"] = metas[assistant_index]
+            assistant_index += 1
+        turns.append(entry)
+    return turns
+
+
+def conversation_entities(thread_id: str) -> dict[str, list[str]]:
+    """The entity memory accumulated by a conversation."""
+    snapshot = get_compiled_graph().get_state({"configurable": {"thread_id": thread_id}})
+    if not snapshot:
+        return {}
+    return dict(snapshot.values.get("conversation_entities") or {})
+
+
+def list_conversations(limit: int = 50) -> list[memory.Conversation]:
+    """Past conversations, most recently updated first."""
+    return memory.get_store().list(limit=limit)
+
+
+def get_conversation(thread_id: str) -> memory.Conversation | None:
+    return memory.get_store().get(thread_id)
+
+
+def rename_conversation(thread_id: str, title: str) -> None:
+    memory.get_store().rename(thread_id, title)
+
+
+def delete_conversation(thread_id: str) -> None:
+    """Remove a conversation from history and drop its checkpoints."""
+    memory.get_store().delete(thread_id)
+
+
+def export_conversation(thread_id: str) -> str:
+    """Render a conversation as markdown, for the LangSmith report or a demo."""
+    record = get_conversation(thread_id)
+    lines = [
+        f"# {record.title if record else thread_id}",
+        "",
+        f"- Thread: `{thread_id}`",
+    ]
+    if record:
+        lines += [
+            f"- Started: {record.created_at}",
+            f"- Last activity: {record.updated_at}",
+            f"- Turns: {record.turns}",
+        ]
+        if record.last_severity:
+            lines.append(f"- Last assessed severity: {record.last_severity}")
+    entities = conversation_entities(thread_id)
+    if entities:
+        lines.append("- Entities in memory: " + ", ".join(
+            f"{field}={'/'.join(values)}" for field, values in entities.items()
+        ))
+    lines.append("")
+
+    for turn in conversation_turns(thread_id):
+        speaker = "Operator" if turn["role"] == "user" else "Assistant"
+        lines += [f"**{speaker}**", "", turn["content"], ""]
+    return "\n".join(lines)
 
 
 def health() -> dict[str, Any]:
@@ -163,9 +313,15 @@ def health() -> dict[str, Any]:
     return {
         "llm_configured": settings.llm_configured,
         "provider": "google_genai",
+        # Two credential paths: an AI Studio API key, or the Vertex AI backend
+        # with gcloud ADC. Worth surfacing - a demo that silently used the wrong
+        # one is hard to debug from the UI.
+        "auth_mode": "vertex_ai" if settings.use_vertexai else "api_key",
         "model": settings.model,
         "reasoning_effort": settings.reasoning_effort,
         "router_reasoning_effort": settings.router_reasoning_effort,
+        "memory_backend": memory.backend_name(),
+        "conversations_stored": len(memory.get_store().list(limit=1000)),
         "data_source": "rest_api" if settings.uses_rest_api else "json_fixtures",
         "data_ok": data_ok,
         "data_error": data_error,

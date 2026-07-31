@@ -28,6 +28,10 @@ load_dotenv(PROJECT_ROOT / ".env", override=False)
 # langchain-google-genai as `reasoning_effort`.
 REASONING_EFFORTS = ("minimal", "low", "medium", "high")
 
+# Conversation memory back ends. `sqlite` survives a restart; `memory` is
+# in-process only and is what the tests use.
+MEMORY_BACKENDS = ("sqlite", "memory")
+
 
 def _bool(name: str, default: bool) -> bool:
     raw = os.getenv(name)
@@ -67,6 +71,16 @@ class Settings:
 
     # LLM (Google AI / Gemini)
     google_api_key: str | None = field(default_factory=_google_api_key)
+    # Vertex AI backend: langchain-google-genai 4.x selects Vertex from these
+    # standard google-genai env vars and authenticates with gcloud ADC, so no
+    # API key is needed. GOOGLE_CLOUD_LOCATION (default "global") is read by
+    # the SDK itself.
+    use_vertexai: bool = field(
+        default_factory=lambda: _bool("GOOGLE_GENAI_USE_VERTEXAI", False)
+    )
+    google_cloud_project: str | None = field(
+        default_factory=lambda: os.getenv("GOOGLE_CLOUD_PROJECT") or None
+    )
     model: str = field(
         default_factory=lambda: os.getenv("SUPPLYCHAIN_MODEL", "gemini-3.1-flash-lite")
     )
@@ -105,8 +119,33 @@ class Settings:
         default_factory=lambda: _bool("SUPPLYCHAIN_REQUIRE_APPROVAL", True)
     )
 
+    # Conversation memory / history
+    memory_backend: str = field(
+        default_factory=lambda: (
+            os.getenv("SUPPLYCHAIN_MEMORY_BACKEND", "sqlite").strip().lower()
+            if (os.getenv("SUPPLYCHAIN_MEMORY_BACKEND", "sqlite").strip().lower())
+            in MEMORY_BACKENDS
+            else "sqlite"
+        )
+    )
+    memory_path: Path = field(
+        default_factory=lambda: Path(
+            os.getenv("SUPPLYCHAIN_MEMORY_PATH")
+            or (PROJECT_ROOT / ".supplychain" / "conversations.sqlite")
+        )
+    )
+    entity_memory_depth: int = field(
+        default_factory=lambda: _int("SUPPLYCHAIN_ENTITY_MEMORY_DEPTH", 3)
+    )
+
+    @property
+    def persists_conversations(self) -> bool:
+        return self.memory_backend == "sqlite"
+
     @property
     def llm_configured(self) -> bool:
+        if self.use_vertexai:
+            return bool(self.google_cloud_project)
         return bool(self.google_api_key)
 
     @property
