@@ -29,6 +29,7 @@ from langgraph.types import interrupt
 from . import actions
 from .agents import analyse_request, decide_route, run_worker, write_response
 from .config import get_settings
+from .observability import traced
 from .resilience import describe_failure
 from .state import SupplyChainState, merge_findings
 
@@ -160,12 +161,17 @@ def _avoid_failed_agents(
     return target, None
 
 
+@traced("routing policy")
 def _apply_routing_policy(
     state: SupplyChainState, target: str
 ) -> tuple[str, str | None]:
     """Structural limits on the router's choice, in precedence order.
 
     A routing instruction in a prompt is a suggestion; these are edges.
+
+    Traced because the clamps are invisible otherwise: when one fires, the
+    trace would show the model choosing `recovery` and the graph going to
+    `respond`, with nothing in between to explain it.
     """
     for clamp in (_avoid_failed_agents, _constrain_read_only):
         target, override = clamp(state, target)
@@ -174,6 +180,7 @@ def _apply_routing_policy(
     return target, None
 
 
+@traced("contained worker failure")
 def _worker_failure(name: str, state: SupplyChainState, exc: Exception) -> dict[str, Any]:
     """Record a dead worker as a finding and let the turn carry on.
 

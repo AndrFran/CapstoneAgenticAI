@@ -81,7 +81,7 @@ def _brief(state: dict[str, Any]) -> str:
 def write_response(state: dict[str, Any]) -> str:
     """Generate the user-facing answer."""
     try:
-        model = get_llm("responder")
+        model = get_llm("responder").with_config({"run_name": "compose answer"})
         message = call_with_retry(
             lambda: model.invoke(
                 [
